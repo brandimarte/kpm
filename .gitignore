@@ -5,6 +5,7 @@ Icon*
 *.a
 *.log
 INPUT_TMP.*
+Makefile
 kpmdev
 !.gitignore
 
