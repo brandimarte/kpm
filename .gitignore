@@ -1,0 +1,8 @@
+.DS_Store
+Icon*
+*.o
+*.mod
+*.a
+kpmdev
+!.gitignore
+
