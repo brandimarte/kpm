@@ -89,7 +89,7 @@ CONTAINS
 #endif
 
 !   Free memory.
-    if (IOnode) write (6,'(/,30("*"),a,30("*"))')                       &
+    if (IOnode) write (6,'(/,34("*"),a,33("*"))')                       &
             ' Ending KPM '
 
     if (IOnode) write (6,'(/,a)', ADVANCE='no')                         &

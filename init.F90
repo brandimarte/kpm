@@ -38,8 +38,8 @@ MODULE init
   use precision,       only: dp
   use parallel,        only:
   use io,              only: 
+  use options,         only: 
   use fdf
-!!$  use options,         only: 
 
   implicit none
 
@@ -81,6 +81,7 @@ CONTAINS
 !
     use parallel,        only: Node, Nodes, IOnode
     use io,              only: IOinit
+    use options,         only: OPTread
 
 #ifdef MPI
     include "mpif.h"
@@ -117,10 +118,10 @@ CONTAINS
     call IOinit
 
 !   Initialise read.
-!!$    call initread
+    call initread
 
 !   Read simulation data.
-!!$    call readopt
+    call OPTread
 
 
   end subroutine initialize

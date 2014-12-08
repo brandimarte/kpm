@@ -45,7 +45,7 @@ PROGRAM KPM
 ! Proper initialization and reading of input options.
   call initialize
 
-  if (IOnode) write (6,'(/,28("*"),a,28("*"),/)')                       &
+  if (IOnode) write (6,'(/,31("*"),a,31("*"),/)')                       &
        ' KPM Calculation '
 
 ! Proper ending.

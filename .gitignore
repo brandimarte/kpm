@@ -3,6 +3,8 @@ Icon*
 *.o
 *.mod
 *.a
+*.log
+INPUT_TMP.*
 kpmdev
 !.gitignore
 

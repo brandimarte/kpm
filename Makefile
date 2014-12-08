@@ -75,7 +75,8 @@ FPPFLAGS = $(FPPFLAGS_MPI)
 RM = /bin/rm -f
 
 # All source files.
-SRCS = precision.F90 parallel.F90 io.F90 init.F90 end.F90 kpm.F90
+SRCS = precision.F90 parallel.F90 io.F90 options.F90 init.F90 end.F90 \
+	kpm.F90
 
 # All objects.
 OBJS = $(SRCS:.F90=.o)
