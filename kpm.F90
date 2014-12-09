@@ -39,6 +39,7 @@ PROGRAM KPM
   use parallel,        only: IOnode
   use init,            only: initialize
   use end,             only: finalize
+  use hsparse,         only: Hbuild
 
   implicit none
 
@@ -47,6 +48,9 @@ PROGRAM KPM
 
   if (IOnode) write (6,'(/,31("*"),a,31("*"),/)')                       &
        ' KPM Calculation '
+
+! Build system sparse hamiltonian.
+  call Hbuild
 
 ! Proper ending.
   call finalize

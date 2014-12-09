@@ -45,7 +45,7 @@ MODULE io
   logical, allocatable, dimension (:) :: lun_is_free ! lun is free?
 
   PUBLIC :: IOinit, IOassign, IOclose, IOopenStreamNew, IOopenStream,   &
-            IOcloseStream, freeIO
+            IOcloseStream, IOfree
   PRIVATE ! default is private
 
 
@@ -374,7 +374,7 @@ CONTAINS
 
 
 !  *******************************************************************  !
-!                                freeIO                                 !
+!                                IOfree                                 !
 !  *******************************************************************  !
 !  Description: free allocated vectors.                                 !
 !                                                                       !
@@ -385,14 +385,14 @@ CONTAINS
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
 !  *******************************************************************  !
-  subroutine freeIO
+  subroutine IOfree
 
 
 !   Free memory.
     deallocate (lun_is_free)
 
 
-  end subroutine freeIO
+  end subroutine IOfree
 
 
 !  *******************************************************************  !

@@ -39,6 +39,7 @@ MODULE end
   use parallel,        only: 
   use init,            only: 
   use io,              only: 
+  use hsparse,         only: 
 
   implicit none
 
@@ -72,7 +73,8 @@ CONTAINS
     use precision,       only: dp
     use parallel,        only: IOnode
     use init,            only: time_begin
-    use io,              only: freeIO
+    use io,              only: IOfree
+    use hsparse,         only: Hfree
 
 #ifdef MPI
     include "mpif.h"
@@ -94,7 +96,8 @@ CONTAINS
 
     if (IOnode) write (6,'(/,a)', ADVANCE='no')                         &
          'finalize: Freeing memory...'
-    call freeIO
+    call IOfree
+    call Hfree
 
     if (IOnode) write (6,'(a,/)') ' done!'
  
