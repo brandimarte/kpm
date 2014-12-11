@@ -39,7 +39,7 @@ EXEC = kpmdev
 KPM_ARCH = x86_64-mac-openmpi-mkl
 
 # Fortran compiler.
-FC = mpif90
+FC = ifort
 FFLAGS = -O2 -xHost -traceback -fpe0 -heap-arrays 1024 \
          -check assume,bounds,format,output_conversion,pointers,stack,uninit \
          -warn unused,truncated_source,uncalled,declarations,usage
@@ -53,33 +53,28 @@ MKL_LIBS      = $(MKL)/lib/libmkl_intel_lp64.a \
 SCALAPACK_LIBS = /opt/local/lib/libscalapack.a
 MKL_INCLUDE    = -I$(MKL)/include
 
-# MPI
-MPI_LIBS     = -L/opt/local/lib -lmpi
-MPI_INCLUDE  = -I/opt/local/include
-FPPFLAGS_MPI = -DMPI
-
 #  *******************************************************************  #
 #  Do not change the following lines.                                   #
 #  *******************************************************************  #
 
 # All libraries.
-LDLIBS = $(MKL_LIBS) $(SCALAPACK_LIBS) -lpthread -lm $(MPI_LIBS)
+LDLIBS = $(MKL_LIBS) $(SCALAPACK_LIBS) -lpthread -lm
 
 # All includes.
-INCFLAGS = $(MKL_INCLUDE) $(MPI_INCLUDE)
+INCFLAGS = $(MKL_INCLUDE)
 
 # Preprocessor definitions or flags.
-FPPFLAGS = $(FPPFLAGS_MPI)
+FPPFLAGS = 
 
 # Remove command.
 RM = /bin/rm -f
 
 # All source files.
-SRCS = precision.F90 parallel.F90 io.F90 init.F90 end.F90 kpm.F90
+SRCS = precision.F90 io.F90 options.F90 init.F90 hsparse.F90 end.F90    \
+	kpm.F90
 
 # All objects.
 OBJS = $(SRCS:.F90=.o)
-#OBJS = precision.o parallel.o io.o init.o end.o kpm.o
 
 VPATH=.
 
@@ -127,7 +122,7 @@ $(EXEC): $(FDF) $(OBJS)
 
 clean:
 	@echo "==> Cleaning object, library, and executable files"
-	$(RM) *~ \#~ .\#* *.o *.a *.mod $(EXEC) core a.out
+	$(RM) *~ \#~ .\#* *.o *.a *.mod *.log $(EXEC) core a.out
 	(cd fdf ; $(MAKE) clean)
 
 #  *******************************************************************  #

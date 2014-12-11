@@ -35,7 +35,6 @@ MODULE options
 !
 !   Modules
 !
-  use parallel,        only: 
   use fdf
 
   implicit none
@@ -66,8 +65,6 @@ CONTAINS
 !  e-mail: brandimarte@gmail.com                                        !
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
-!  *********************** INPUT FROM MODULES ************************  !
-!  logical IOnode                : True if it is the I/O node           !
 !  ***************************** OUTPUT ******************************  !
 !  integer lattOrder              : Lattice order                       !
 !                                   (# of sites at each dimension)      !
@@ -75,55 +72,28 @@ CONTAINS
 !  *******************************************************************  !
   subroutine OPTread
 
-!
-!   Modules
-!
-    use parallel,        only: IOnode
-
-#ifdef MPI
-    include "mpif.h"
-#endif
-
 !   Local variables.
     character :: slabel_default*60
-#ifdef MPI
-    integer :: MPIerror ! Return error code in MPI routines
-#endif
 
-    if (IOnode) then
-       write (6,'(/,28("*"),a,28("*"))')                                &
-            ' Simulation parameters '
+    write (6,'(/,28("*"),a,28("*"))') ' Simulation parameters '
 
-!      Defile System Label (short name to label files).
-       slabel = ""
-       slabel_default = 'kpmsys'
-       slabel = fdf_string ('SystemLabel', slabel_default)
-       write (6,2) 'OPTread: System label                         ' //  &
-            '         =  ', slabel
+!   Defile System Label (short name to label files).
+    slabel = ""
+    slabel_default = 'kpmsys'
+    slabel = fdf_string ('SystemLabel', slabel_default)
+    write (6,2) 'OPTread: System label                         ' //     &
+         '         =  ', slabel
 
-!      Lattice order (number of sites at each dimension).
-       lattOrder = fdf_integer ('LatticeOrder', 1)
-       if (lattOrder <= 0) then
-#ifdef MPI
-          call MPI_Abort (MPI_Comm_World, 1, MPIerror)
-#else
-          stop 'OPTread: ERROR: Lattice order is zero!'
-#endif
-       endif
-       write (6,4)                                                      &
-            'OPTread: Lattice order                                 =', &
-            lattOrder
+!   Lattice order (number of sites at each dimension).
+    lattOrder = fdf_integer ('LatticeOrder', 1)
+    if (lattOrder <= 0) then
+       stop 'OPTread: ERROR: Lattice order is zero!'
+    endif
+    write (6,4)                                                         &
+         'OPTread: Lattice order                                 =',    &
+         lattOrder
 
-       write (6,'(2a)') 'OPTread: ', repeat('*', 70)
-
-    endif ! if (IOnode)
-
-#ifdef MPI
-    call MPI_Bcast (slabel, label_length, MPI_Character, 0,             &
-                    MPI_Comm_World, MPIerror)
-    call MPI_Bcast (lattOrder, 1, MPI_Integer, 0,                       &
-                    MPI_Comm_World, MPIerror)
-#endif
+    write (6,'(2a)') 'OPTread: ', repeat('*', 70)
 
 1   format(a,6x,l1)
 2   format(a,a)

@@ -90,9 +90,6 @@ CONTAINS
 ! Modules
 !
     use options,         only: lattOrder
-! TEMP BEGIN
-    use parallel,        only: IOnode
-! TEMP END
 
 !   Local variables.
     real(dp), allocatable, dimension (:,:) :: Htot
@@ -114,14 +111,12 @@ CONTAINS
     Htot(4,:) = [-4.0_dp,  0.0_dp,  2.0_dp,  7.0_dp,  0.0_dp]
     Htot(5,:) = [ 0.0_dp,  8.0_dp,  0.0_dp,  0.0_dp, -5.0_dp]
 
-    if (IOnode) then
-       do i = 1,5
-          do j = 1,4
-             write (6,'(f5.1)',advance='no') Htot(i,j)
-          enddo
-          write (6,'(f5.1)') Htot(i,5)
+    do i = 1,5
+       do j = 1,4
+          write (6,'(f5.1)',advance='no') Htot(i,j)
        enddo
-    endif
+       write (6,'(f5.1)') Htot(i,5)
+    enddo
 ! TEMP END
 
 !   Convert to CSR format.
@@ -149,19 +144,8 @@ CONTAINS
 !  ****************************** INPUT ******************************  !
 !  real*8 Htot                 : hamiltonian in dense format            !
 !  real*8 n                    : Order of 'Htot' matrix (lattOrder)     !
-!  *********************** INPUT FROM MODULES ************************  !
-!  logical IOnode              : True if it is the I/O node             !
 !  *******************************************************************  !
   subroutine Hdense2sparse (Htot, n)
-
-!
-! Modules
-!
-    use parallel,        only: IOnode
-
-#ifdef MPI
-    include "mpif.h"
-#endif
 
 !   Input variables.
     integer, intent(in) :: n
@@ -172,9 +156,6 @@ CONTAINS
     integer :: job(8) ! why 8? who knows...
     real(dp), allocatable, dimension (:) :: tmpHval
     integer, allocatable, dimension (:) :: tmpHcol
-#ifdef MPI
-    integer :: MPIerror ! Return error code in MPI routines
-#endif
 
 !   Allocate auxiliary arrays and 'Hrow' from CSR format.
     allocate (tmpHval(n*n))
@@ -184,63 +165,38 @@ CONTAINS
     tmpHcol = 0
     Hrow = 0
 
-    if (IOnode) then
+    job(1) = 0 ! convert from dense to CSR format
+    job(2) = 1 ! one-based indexing for dense matrix
+    job(3) = 1 ! one-based indexing for CSR format
+    job(4) = 2 ! pass the whole dense matrix
+    job(5) = n*n ! maximum non-zero elements allowed
+    job(6) = 1 ! arrays Hval, Hcol, Hrow are generated
 
-       job(1) = 0 ! convert from dense to CSR format
-       job(2) = 1 ! one-based indexing for dense matrix
-       job(3) = 1 ! one-based indexing for CSR format
-       job(4) = 2 ! pass the whole dense matrix
-       job(5) = n*n ! maximum non-zero elements allowed
-       job(6) = 1 ! arrays Hval, Hcol, Hrow are generated
+!   Convert dense matrix 'Htot' to CSR format.
+    call mkl_ddnscsr (job, n, n, Htot, n, tmpHval, tmpHcol, Hrow, info)
 
-!      Convert dense matrix 'Htot' to CSR format.
-       call mkl_ddnscsr (job, n, n, Htot, n, tmpHval,                   &
-                         tmpHcol, Hrow, info)
-
-!      Check if execution was successful.
-       if (info /= 0) then
-          print *, 'hsparse: ERROR: when converting to CSR format!'
-#ifdef MPI
-          call MPI_Abort (MPI_Comm_World, 1, MPIerror)
-#else
-          stop
-#endif
-       endif
-
-!      Compute the number of non-zero elements.
-       size = 0
-       do while (size < n*n)
-          if (tmpHcol(size+1) /= 0) then
-             size = size + 1
-          else
-             exit
-          endif
-       enddo
-
+!   Check if execution was successful.
+    if (info /= 0) then
+       stop 'hsparse: ERROR: when converting to CSR format!'
     endif
 
-!   Broadcast the number of non-zero elements.
-#ifdef MPI
-    call MPI_Bcast (size, 1, MPI_Integer, 0, MPI_Comm_World, MPIerror)
-#endif
+!   Compute the number of non-zero elements.
+    size = 0
+    do while (size < n*n)
+       if (tmpHcol(size+1) /= 0) then
+          size = size + 1
+       else
+          exit
+       endif
+    enddo
 
 !   Allocate 'Hval' and 'Hcol' from CSR format.
     allocate (Hval(size))
     allocate (Hcol(size))
     
 !   Copy from auxiliary arrays.
-    if (IOnode) then
-       Hval(1:size) = tmpHval(1:size)
-       Hcol(1:size) = tmpHcol(1:size)
-    endif
-
-!   Broadcast the sparse matrix in CSR format.
-#ifdef MPI
-    call MPI_Bcast (Hval, size, MPI_Double_Precision, 0,                &
-                    MPI_Comm_World, MPIerror)
-    call MPI_Bcast (Hcol, size, MPI_Integer, 0, MPI_Comm_World, MPIerror)
-    call MPI_Bcast (Hrow, n+1, MPI_Integer, 0, MPI_Comm_World, MPIerror)
-#endif
+    Hval(1:size) = tmpHval(1:size)
+    Hcol(1:size) = tmpHcol(1:size)
 
 !   Free memory.
     deallocate (tmpHval)

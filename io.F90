@@ -32,11 +32,6 @@
 
 MODULE io
 
-!
-! Modules
-!
-  use parallel,        only: 
-
   implicit none
 
   integer :: min_lun = 10 ! minimum logical unit number
@@ -96,24 +91,12 @@ CONTAINS
 !  *******************************************************************  !
   subroutine IOassign (lun)
 
-!
-!   Modules
-!
-    use parallel,        only: IOnode
-
-#ifdef MPI
-    include "mpif.h"
-#endif
-
 !   Input variables.
     integer, intent (out) :: lun
 
 !   Local variables.
     integer :: iostat
     logical :: used
-#ifdef MPI
-    integer :: MPIerror
-#endif
 
     do lun = min_lun,max_lun
        if (lun_is_free(lun)) then
@@ -124,13 +107,7 @@ CONTAINS
        endif
     enddo
 
-    if (IOnode) then
-       write (6,'(/,a,/)') "ERROR: No luns available in io_assign"
-#ifdef MPI
-       call MPI_Abort (MPI_Comm_World, 1, MPIerror)
-#endif
-       stop
-    endif
+    stop "ERROR: No luns available in io_assign"
 
 
   end subroutine IOassign

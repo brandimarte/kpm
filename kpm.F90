@@ -36,7 +36,6 @@ PROGRAM KPM
 !
 ! Modules
 !
-  use parallel,        only: IOnode
   use init,            only: initialize
   use end,             only: finalize
   use hsparse,         only: Hbuild
@@ -46,8 +45,7 @@ PROGRAM KPM
 ! Proper initialization and reading of input options.
   call initialize
 
-  if (IOnode) write (6,'(/,31("*"),a,31("*"),/)')                       &
-       ' KPM Calculation '
+  write (6,'(/,31("*"),a,31("*"),/)') ' KPM Calculation '
 
 ! Build system sparse hamiltonian.
   call Hbuild

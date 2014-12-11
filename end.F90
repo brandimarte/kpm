@@ -36,7 +36,6 @@ MODULE end
 ! Modules
 !
   use precision,       only: 
-  use parallel,        only: 
   use init,            only: 
   use io,              only: 
   use hsparse,         only: 
@@ -62,7 +61,6 @@ CONTAINS
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
 !  *********************** INPUT FROM MODULES ************************  !
-!  logical IOnode                 : True if it is the I/O node          !
 !  real*8 time_begin              : Initial processor time in seconds   !
 !  *******************************************************************  !
   subroutine finalize
@@ -71,50 +69,28 @@ CONTAINS
 ! Modules
 !
     use precision,       only: dp
-    use parallel,        only: IOnode
     use init,            only: time_begin
     use io,              only: IOfree
     use hsparse,         only: Hfree
 
-#ifdef MPI
-    include "mpif.h"
-#endif
-
 !   Local variables.
     real(dp) :: time_end
-#ifdef MPI
-    integer :: MPIerror ! Return error code in MPI routines
-#endif
 
-#ifdef MPI
-    call MPI_Barrier (MPI_Comm_World, MPIerror)
-#endif
+    write (6,'(/,34("*"),a,33("*"))') ' Ending KPM '
 
 !   Free memory.
-    if (IOnode) write (6,'(/,34("*"),a,33("*"))')                       &
-            ' Ending KPM '
-
-    if (IOnode) write (6,'(/,a)', ADVANCE='no')                         &
-         'finalize: Freeing memory...'
+    write (6,'(/,a)', ADVANCE='no') 'finalize: Freeing memory...'
     call IOfree
     call Hfree
 
-    if (IOnode) write (6,'(a,/)') ' done!'
+    write (6,'(a,/)') ' done!'
  
-!   Finalizes MPI.
-#ifdef MPI
-    call MPI_Finalize (MPIerror)
-#endif
+!   Final time.
+    call cpu_time (time_end)
 
-    if (IOnode) then
-
-!      Final time.
-       call cpu_time (time_end)
-
-       write (6,'(a,f12.4,a)') "Time of calculation was ",              &
+    write (6,'(a,f12.4,a)') "Time of calculation was ",                 &
             time_end - time_begin, " seconds"
-       write (6,'(/,a,/)') "End of program KPM"
-    endif
+    write (6,'(/,a,/)') "End of program KPM"
 
 
   end subroutine finalize

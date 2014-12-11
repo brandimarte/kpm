@@ -36,7 +36,6 @@ MODULE init
 ! Modules
 !
   use precision,       only: dp
-  use parallel,        only:
   use io,              only: 
   use options,         only: 
   use fdf
@@ -64,55 +63,22 @@ CONTAINS
 !  e-mail: brandimarte@gmail.com                                        !
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
-!  *********************** INPUT FROM MODULES ************************  !
-!  integer Node                : Actual node (MPI_Comm_rank)            !
-!  integer Nodes               : Total number of nodes (MPI_Comm_size)  !
-!  logical IOnode              : True if it is the I/O node             !
-!  integer ProcsPerGPU         : Number of processes running per GPU    !
 !  ***************************** OUTPUT ******************************  !
 !  real*8 time_begin           : Initial processor time in seconds      !
-!  integer nsc(2)              : Number of unit cells along parallel    !
-!                                directions                             !
 !  *******************************************************************  !
   subroutine initialize
 
 !
 ! Modules
 !
-    use parallel,        only: Node, Nodes, IOnode
     use io,              only: IOinit
     use options,         only: OPTread
 
-#ifdef MPI
-    include "mpif.h"
-
-!   Local variables.
-    integer :: MPIerror ! Return error code in MPI routines
-#endif
-
-!   Initialise MPI and set processor number.
-#ifdef MPI
-    call MPI_Init (MPIerror)
-    call MPI_Comm_rank (MPI_Comm_World, Node, MPIerror)
-    call MPI_Comm_size (MPI_Comm_World, Nodes, MPIerror)
-#endif
-
-    IOnode = (Node == 0)
-
 !   Print version information.
-    if (IOnode) then
+    call header
 
-!      Print header.
-#ifdef MPI
-       call header (Nodes)
-#else
-       call header
-#endif
-
-!      Initial time.
-       call cpu_time (time_begin)
-
-    endif
+!   Initial time.
+    call cpu_time (time_begin)
 
 !   Init logical units control.
     call IOinit
@@ -142,15 +108,12 @@ CONTAINS
 !  e-mail: brandimarte@gmail.com                                        !
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
-!  *********************** INPUT FROM MODULES ************************  !
-!  logical IOnode              : True if it is the I/O node             !
 !  *******************************************************************  !
   subroutine initread
 
 !
 ! Modules
 !
-    use parallel,        only: IOnode
     use io,              only: IOassign, IOclose
     use fdf
 
@@ -160,61 +123,56 @@ CONTAINS
     integer :: count, length, lun, lun_tmp
     logical :: debug_input, file_exists
 
-!   Print welcome and presentation.
-    if (IOnode) then
+    write (6,'(/,27(1h*),a,27(1h*))') ' Dump of input data file '
 
-       write (6,'(/,27(1h*),a,27(1h*))') ' Dump of input data file '
-
-!      Dump data file to output file and generate scratch file
-!      for FDF to read from (except if INPUT_DEBUG exists).
-       inquire (file='INPUT_DEBUG', exist=debug_input)
-       if (debug_input) then
-          write (6,'(a)') 'WARNING: ' //                                &
-               'KPM is reading its input from file INPUT_DEBUG'
+!   Dump data file to output file and generate scratch file
+!   for FDF to read from (except if INPUT_DEBUG exists).
+    inquire (file='INPUT_DEBUG', exist=debug_input)
+    if (debug_input) then
+       write (6,'(a)') 'WARNING: ' //                                   &
+            'KPM is reading its input from file INPUT_DEBUG'
            
-          call IOassign(lun)
-          filein = 'INPUT_DEBUG'
-          open (lun, file='INPUT_DEBUG', form='formatted', status='old')
-          rewind (lun)
-       else
-          write (6,'(a,/)') 'initread: Reading from standard input'
-          lun = 5
-          call IOassign (lun_tmp)
-          do
-             call system_clock (count)
-             write (string,*) count
-             filein = 'INPUT_TMP.' // adjustl(string)
-             inquire (file=filein, exist=file_exists)
-             if (.not. file_exists) exit
-          end do
-          open (lun_tmp, file=filein, form='formatted', status='replace')
-          rewind (lun_tmp)
-       endif
-
-10     continue
-       read (lun, err=20, end=20, fmt='(a)') line
-       call chrlen (line, 0, length)
-       if (length /= 0) then
-          write(6,'(a,a)') 'initread: ', line(1:length)
-          if (.not. debug_input) write (lun_tmp,'(a)') line(1:length)
-       endif
-       goto 10
-20     continue
-
-       write (6,'(2a)') 'initread: ', repeat('*', 69)
-
-!      Choose proper file for fdf processing.
-       if (debug_input) then
-          call IOclose (lun)
-       else
-          call IOclose (lun_tmp)
-       endif
-
-!      Set up fdf.
-       fileout = 'fdf.log'
-       call fdf_init (filein, fileout)
-
+       call IOassign(lun)
+       filein = 'INPUT_DEBUG'
+       open (lun, file='INPUT_DEBUG', form='formatted', status='old')
+       rewind (lun)
+    else
+       write (6,'(a,/)') 'initread: Reading from standard input'
+       lun = 5
+       call IOassign (lun_tmp)
+       do
+          call system_clock (count)
+          write (string,*) count
+          filein = 'INPUT_TMP.' // adjustl(string)
+          inquire (file=filein, exist=file_exists)
+          if (.not. file_exists) exit
+       end do
+       open (lun_tmp, file=filein, form='formatted', status='replace')
+       rewind (lun_tmp)
     endif
+
+10  continue
+    read (lun, err=20, end=20, fmt='(a)') line
+    call chrlen (line, 0, length)
+    if (length /= 0) then
+       write(6,'(a,a)') 'initread: ', line(1:length)
+       if (.not. debug_input) write (lun_tmp,'(a)') line(1:length)
+    endif
+    goto 10
+20  continue
+
+    write (6,'(2a)') 'initread: ', repeat('*', 69)
+
+!   Choose proper file for fdf processing.
+    if (debug_input) then
+       call IOclose (lun)
+    else
+       call IOclose (lun_tmp)
+    endif
+
+!   Set up fdf.
+    fileout = 'fdf.log'
+    call fdf_init (filein, fileout)
 
 
   end subroutine initread
@@ -231,19 +189,8 @@ CONTAINS
 !  e-mail: brandimarte@gmail.com                                        !
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
-!  ****************************** INPUT ******************************  !
-!  integer Nodes               : Total number of nodes (MPI_Comm_size)  !
 !  *******************************************************************  !
-#ifdef MPI
-  subroutine header (Nodes)
-#else
   subroutine header
-#endif
-
-!   Input variables.
-#ifdef MPI
-    integer, intent(in) :: Nodes
-#endif
 
 !   Local variables.
     integer, dimension(8) :: values
@@ -271,17 +218,6 @@ CONTAINS
     write (6,'(a)') '      <http://fsf.org/>. See the GNU '          // &
          'General Public License for details.'
     write (6,'(/,a,73(1h*))') '   '
-
-#ifdef MPI
-    if (Nodes > 1) then
-       write(6,'(/,a,i4,a)')                                            &
-            '* Running on ', Nodes, ' nodes in parallel'
-    else
-       write(6,'(/,a,i4,a)') '* Running in serial mode with MPI'
-    endif
-#else
-    write(6,'(/,a,i4,a)') '* Running in serial mode'
-#endif
 
 
   end subroutine header
