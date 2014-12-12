@@ -100,6 +100,7 @@ CONTAINS
     use options,         only: lattOrder, polDegree
 
 !   Local variables.
+    integer :: nTot
     real(dp), allocatable, dimension (:,:) :: Htot
 
 ! TEMP BEGIN
@@ -109,13 +110,16 @@ CONTAINS
 !   Full Hamiltonian matrix (dense representation).
     allocate (Htot(lattOrder,lattOrder))
 
+!   Size of triangular elements.
+    nTot = (lattOrder*lattOrder - lattOrder) / 2 + lattOrder
+
 !   Generate the full Hamiltonian in dense representation.
     call Hdense (Htot, lattOrder)
 
 !   Renormalize the Hamiltonian.
 
 !   Convert to CSR format.
-    call Hdense2sparse (Htot, lattOrder)
+    call Hdense2sparse (Htot, lattOrder, nTot)
 
 !   Free memory.
     deallocate (Htot)
@@ -142,13 +146,13 @@ CONTAINS
 !  Original version:    December 2014                                   !
 !  ****************************** INPUT ******************************  !
 !  real*8 Htot                 : Hamiltonian in dense format            !
-!  real*8 n                    : Order of 'Htot' matrix (lattOrder)     !
+!  real*8 lattOrder            : Order of 'Htot' matrix                 !
 !  *******************************************************************  !
-  subroutine Hdense (Htot, n)
+  subroutine Hdense (Htot, lattOrder)
 
 !   Input variables.
-    integer, intent(in) :: n
-    real(dp), intent(inout) :: Htot(n,n)
+    integer, intent(in) :: lattOrder
+    real(dp), intent(inout) :: Htot(lattOrder,lattOrder)
 
 !   Local variables.
 ! TEMP BEGIN
@@ -157,25 +161,37 @@ CONTAINS
 
     write (6,'(a,/)') 'Building full tight-binding Hamiltonian matrix'
 
+!   Assign only lower triangular part.
 ! TEMP BEGIN
-    Htot(1,:) = [ 1.0_dp, -1.0_dp,  0.0_dp, -3.0_dp,  0.0_dp]
-    Htot(2,:) = [-1.0_dp,  5.0_dp,  0.0_dp,  0.0_dp,  0.0_dp]
-    Htot(3,:) = [ 0.0_dp,  0.0_dp,  4.0_dp,  2.0_dp,  4.0_dp]
-    Htot(4,:) = [-3.0_dp,  0.0_dp,  2.0_dp,  7.0_dp,  0.0_dp]
-    Htot(5,:) = [ 0.0_dp,  0.0_dp,  4.0_dp,  0.0_dp, -5.0_dp]
-!!$    Htot(1,:) = [ 1.0_dp, -1.0_dp,  0.0_dp, -3.0_dp,  0.0_dp]
-!!$    Htot(2,:) = [-2.0_dp,  5.0_dp,  0.0_dp,  0.0_dp,  0.0_dp]
-!!$    Htot(3,:) = [ 0.0_dp,  0.0_dp,  4.0_dp,  6.0_dp,  4.0_dp]
-!!$    Htot(4,:) = [-4.0_dp,  0.0_dp,  2.0_dp,  7.0_dp,  0.0_dp]
-!!$    Htot(5,:) = [ 0.0_dp,  8.0_dp,  0.0_dp,  0.0_dp, -5.0_dp]
+    Htot(1,1) =  1.0_dp
+    Htot(2,1) = -1.0_dp
+    Htot(3,1) =  0.0_dp
+    Htot(4,1) = -3.0_dp
+    Htot(5,1) =  0.0_dp
+    Htot(2,2) =  5.0_dp
+    Htot(3,2) =  0.0_dp
+    Htot(4,2) =  0.0_dp
+    Htot(5,2) =  0.0_dp
+    Htot(3,3) =  4.0_dp
+    Htot(3,4) =  2.0_dp
+    Htot(3,5) =  4.0_dp
+    Htot(4,4) =  7.0_dp
+    Htot(4,5) =  0.0_dp
+    Htot(5,5) = -5.0_dp
 
-    do i = 1,5
-       do j = 1,4
-          write (6,'(f5.1)',advance='no') Htot(i,j)
-       enddo
-       write (6,'(f5.1)') Htot(i,5)
-    enddo
-    write (6,'(a)') ''
+!!$    Htot(1,:) = [ 1.0_dp, -1.0_dp,  0.0_dp, -3.0_dp,  0.0_dp]
+!!$    Htot(2,:) = [-1.0_dp,  5.0_dp,  0.0_dp,  0.0_dp,  0.0_dp]
+!!$    Htot(3,:) = [ 0.0_dp,  0.0_dp,  4.0_dp,  2.0_dp,  4.0_dp]
+!!$    Htot(4,:) = [-3.0_dp,  0.0_dp,  2.0_dp,  7.0_dp,  0.0_dp]
+!!$    Htot(5,:) = [ 0.0_dp,  0.0_dp,  4.0_dp,  0.0_dp, -5.0_dp]
+!!$
+!!$    do i = 1,5
+!!$       do j = 1,4
+!!$          write (6,'(f5.1)',advance='no') Htot(i,j)
+!!$       enddo
+!!$       write (6,'(f5.1)') Htot(i,5)
+!!$    enddo
+!!$    write (6,'(a)') ''
  ! TEMP END
 
 
@@ -196,13 +212,14 @@ CONTAINS
 !  Original version:    December 2014                                   !
 !  ****************************** INPUT ******************************  !
 !  real*8 Htot                 : Hamiltonian in dense format            !
-!  real*8 n                    : Order of 'Htot' matrix (lattOrder)     !
+!  real*8 lattOrder            : Order of 'Htot' matrix                 !
+!  real*8 nTot                 : Number of triangular elements          !
 !  *******************************************************************  !
-  subroutine Hdense2sparse (Htot, n)
+  subroutine Hdense2sparse (Htot, lattOrder, nTot)
 
 !   Input variables.
-    integer, intent(in) :: n
-    real(dp), intent(in) :: Htot(n,n)
+    integer, intent(in) :: lattOrder, nTot
+    real(dp), intent(in) :: Htot(lattOrder,lattOrder)
 
 !   Local variables.
     integer :: info
@@ -213,9 +230,9 @@ CONTAINS
     write (6,'(a,/)') 'Converting to CSR sparse format'
 
 !   Allocate auxiliary arrays and 'Hrow' from CSR format.
-    allocate (tmpHval(n*n))
-    allocate (tmpHcol(n*n))
-    allocate (Hrow(n+1))
+    allocate (tmpHval(nTot))
+    allocate (tmpHcol(nTot))
+    allocate (Hrow(lattOrder+1))
     tmpHval = 0.0_dp
     tmpHcol = 0
     Hrow = 0
@@ -223,12 +240,13 @@ CONTAINS
     job(1) = 0 ! convert from dense to CSR format
     job(2) = 1 ! one-based indexing for dense matrix
     job(3) = 1 ! one-based indexing for CSR format
-    job(4) = 2 ! pass the whole dense matrix
-    job(5) = n*n ! maximum non-zero elements allowed
+    job(4) = 0 ! pass the lower triangular part of dense matrix
+    job(5) = nTot ! maximum non-zero elements allowed
     job(6) = 1 ! arrays Hval, Hcol, Hrow are generated
 
 !   Convert dense matrix 'Htot' to CSR format.
-    call mkl_ddnscsr (job, n, n, Htot, n, tmpHval, tmpHcol, Hrow, info)
+    call mkl_ddnscsr (job, lattOrder, lattOrder, Htot, lattOrder,       &
+                      tmpHval, tmpHcol, Hrow, info)
 
 !   Check if execution was successful.
     if (info /= 0) then
@@ -237,7 +255,7 @@ CONTAINS
 
 !   Compute the number of non-zero elements.
     nH = 0
-    do while (nH < n*n)
+    do while (nH < nTot)
        if (tmpHcol(nH+1) /= 0) then
           nH = nH + 1
        else
@@ -276,13 +294,14 @@ CONTAINS
 !  Original version:    December 2014                                   !
 !  ****************************** INPUT ******************************  !
 !  real*8 Htot                 : Hamiltonian in dense format            !
-!  real*8 n                    : Order of 'Htot' matrix (lattOrder)     !
+!  real*8 lattOrder            : Order of 'Htot' matrix                 !
+!  real*8 nTot                 : Number of triangular elements          !
 !  *******************************************************************  !
-  subroutine Hsparse2dense (Htot, n)
+  subroutine Hsparse2dense (Htot, lattOrder, nTot)
 
 !   Input variables.
-    integer, intent(in) :: n
-    real(dp), intent(inout) :: Htot(n,n)
+    integer, intent(in) :: lattOrder, nTot
+    real(dp), intent(inout) :: Htot(lattOrder,lattOrder)
 
 !   Local variables.
     integer :: info
@@ -293,12 +312,13 @@ CONTAINS
     job(1) = 1 ! convert from CSR format to dense
     job(2) = 1 ! one-based indexing for dense matrix
     job(3) = 1 ! one-based indexing for CSR format
-    job(4) = 2 ! pass the whole dense matrix
-    job(5) = n*n ! maximum non-zero elements allowed
+    job(4) = 0 ! pass the lower triangular part of dense matrix
+    job(5) = nTot ! maximum non-zero elements allowed
     job(6) = 1 ! it is ignored
 
 !   Convert dense matrix 'Htot' to CSR format.
-    call mkl_ddnscsr (job, n, n, Htot, n, Hval, Hcol, Hrow, info)
+    call mkl_ddnscsr (job, lattOrder, lattOrder, Htot, lattOrder,       &
+                      Hval, Hcol, Hrow, info)
 
 !   Check if execution was successful.
     if (info /= 0) then
@@ -340,9 +360,12 @@ CONTAINS
     integer, intent(in) :: state
 
 !   Local variables.
-    integer :: i
+    integer :: i, nsteps
     real(dp), allocatable, dimension (:) :: alpha0, alpha1, alpha2
     character(len=6) :: matdescra ! why 6? who knows...
+! TEMP BEGIN
+    integer :: j
+! TEMP END
 
     write (6,'(a,i5,/)') 'Computing the moments for state ', state
 
@@ -352,9 +375,9 @@ CONTAINS
     allocate (alpha2(lattOrder))
 
 !   Initialize descriptor.
-    matdescra = 'G' ! general matrix
-    call STRconcat (matdescra, 'L', matdescra) ! it is ignored
-    call STRconcat (matdescra, 'N', matdescra) ! it is ignored
+    matdescra = 'S' ! symmetric matrix
+    call STRconcat (matdescra, 'L', matdescra) ! lower triangle
+    call STRconcat (matdescra, 'N', matdescra) ! non-unit diagonal
     call STRconcat (matdescra, 'F', matdescra) ! one-based indexing
 
 !   First 2 momments:
@@ -364,7 +387,15 @@ CONTAINS
          Hval, Hcol, Hrow, Hrow(2), alpha0, 0.0_dp, alpha1)
     muH(2) = alpha1(state)
 
-    do i = 3,polDegree
+! TEMP BEGIN
+    do j = 1,5
+       write (6,'(f16.1)') alpha1(j)
+    enddo
+    write (6,'(a)') ''
+! TEMP END
+
+    nsteps = polDegree / 2.0_dp
+    do i = 3,nsteps
 
 !      |s_i+1> = 2 H |s_i> - |s_i-1>
        call mkl_dcsrmv ('N', lattOrder, lattOrder, 2.0_dp, matdescra,   &
@@ -373,6 +404,13 @@ CONTAINS
        alpha0 = alpha1
        alpha1 = alpha2
        muH(i) = alpha2(state)
+
+! TEMP BEGIN
+       do j = 1,5
+          write (6,'(f16.1)') alpha2(j)
+       enddo
+       write (6,'(a)') ''
+! TEMP END
 
     enddo
 
