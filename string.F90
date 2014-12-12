@@ -18,9 +18,9 @@
 !  distributed along with this program or at                            !
 !  <http://www.gnu.org/licenses/gpl.html>).                             !
 !  *******************************************************************  !
-!                         MODULE idsrdr_options                         !
+!                             MODULE string                             !
 !  *******************************************************************  !
-!  Description: read input option.                                      !
+!  Description: some tricks to deal with strings in fortran.            !
 !                                                                       !
 !  Written by Pedro Brandimarte, Dec 2014.                              !
 !  Instituto de Fisica                                                  !
@@ -30,35 +30,23 @@
 !  Original version:    December 2014                                   !
 !  *******************************************************************  !
 
-MODULE options
+MODULE string
 
-!
-!   Modules
-!
-  use fdf
 
   implicit none
   
-  PUBLIC ! default is public
-
-  integer :: lattOrder    ! Lattice order (# of sites at each dimension)
-  integer :: polDegree    ! Degree of Chebyshev polynomial expansion
-
-  integer, parameter :: label_length = 60 ! Length of system label
-
-  character(len=label_length), save :: slabel ! System Label
-                                              ! (to name output files)
+  PUBLIC :: STRconcat, STRpaste
+  PRIVATE ! default is private
 
 
 CONTAINS
 
 
 !  *******************************************************************  !
-!                                OPTread                                !
+!                               STRconcat                               !
 !  *******************************************************************  !
-!  Description: subroutine to read input variables.                     !
-!                                                                       !
-!  Use FDF (Flexible Data Format) package of J.M.Soler and A.Garcia.    !
+!  Description: concatenates the strings 'str1' and 'str2' removing     !
+!  the blanc spaces before and after the string 'str1'.                 !
 !                                                                       !
 !  Written by Pedro Brandimarte, Dec 2014.                              !
 !  Instituto de Fisica                                                  !
@@ -66,59 +54,71 @@ CONTAINS
 !  e-mail: brandimarte@gmail.com                                        !
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
+!  ****************************** INPUT ******************************  !
+!  character*(*) str1                    : First string                 !
+!  character*(*) str2                    : Second string                !
 !  ***************************** OUTPUT ******************************  !
-!  integer lattOrder              : Lattice order                       !
-!                                   (# of sites at each dimension)      !
-!  integer polDegree              : Degree of polynomial expansion      !
-!  character(label_length) slabel : System Label (for output files)     !
+!  character*(*) str3                    : Concatenated string          !
 !  *******************************************************************  !
-  subroutine OPTread
+  subroutine STRconcat (str1, str2, str3)
+
+!   Input variables.
+    character*(*), intent(in) :: str1, str2
+    character*(*), intent(out) :: str3
 
 !   Local variables.
-    character :: slabel_default*60
+    integer :: l, m
 
-    write (6,'(/,28("*"),a,28("*"))') ' Simulation parameters '
+    m = len(trim(str1))
+    do l = 1,m
+       if (str1(l:l) /= ' ') exit
+    enddo
 
-!   Defile System Label (short name to label files).
-    slabel = ""
-    slabel_default = 'kpmsys'
-    slabel = fdf_string ('SystemLabel', slabel_default)
-    write (6,2) 'OPTread: System label                         ' //     &
-         '         =  ', slabel
-
-!   Lattice order (number of sites at each dimension).
-    lattOrder = fdf_integer ('LatticeOrder', 1)
-    if (lattOrder <= 0) then
-       stop 'OPTread: ERROR: Lattice order is zero!'
-    endif
-    write (6,4)                                                         &
-         'OPTread: Lattice order                                 =',    &
-         lattOrder
-
-!   Degree of Chebyshev polynomial expansion.
-    polDegree = fdf_integer ('PolynomialDegree', 100)
-    if (polDegree < 3) then
-       stop 'OPTread: ERROR: polynomial degree too small!'
-    endif
-    if (MOD(polDegree,2) /= 0) polDegree = polDegree + 1
-    write (6,4)                                                         &
-         'OPTread: Degree of Chebyshev polynomial expansion      =',    &
-         polDegree
-
-    write (6,'(2a)') 'OPTread: ', repeat('*', 70)
-
-1   format(a,6x,l1)
-2   format(a,a)
-4   format(a,i7)
-6   format(a,f14.8,a)
-9   format(a,f14.8)
+    str3 = str1(l:m)//str2
 
 
-  end subroutine OPTread
+  end subroutine STRconcat
+
+
+!  *******************************************************************  !
+!                               STRpaste                                !
+!  *******************************************************************  !
+!  Description: concatenates the strings 'str1' and 'str2' removing     !
+!  the blanc spaces after the string 'str1' and before 'str2'.          !
+!                                                                       !
+!  Written by Pedro Brandimarte, Dec 2014.                              !
+!  Instituto de Fisica                                                  !
+!  Universidade de Sao Paulo                                            !
+!  e-mail: brandimarte@gmail.com                                        !
+!  ***************************** HISTORY *****************************  !
+!  Original version:    December 2014                                   !
+!  ****************************** INPUT ******************************  !
+!  character*(*) str1                    : First string                 !
+!  character*(*) str2                    : Second string                !
+!  ***************************** OUTPUT ******************************  !
+!  character*(*) str3                    : Concatenated string          !
+!  *******************************************************************  !
+  subroutine STRpaste (str1, str2, str3)
+
+!   Input variables.
+    character*(*), intent(in) :: str1, str2
+    character*(*), intent(out) :: str3
+
+!   Local variables.
+    integer :: l, m
+
+    m = len(trim(str1))
+    do l = m,1,-1
+       if (str1(l:l) /= ' ') exit
+    enddo
+
+    str3 = str1(1:l)//str2
+
+
+  end subroutine STRpaste
 
 
 !  *******************************************************************  !
 
 
-END MODULE options
-
+END MODULE string

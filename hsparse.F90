@@ -20,7 +20,7 @@
 !  *******************************************************************  !
 !                            MODULE hsparse                             !
 !  *******************************************************************  !
-!  Description: build the sparse tight-binding hamiltonian matrix.      !
+!  Description: build the sparse tight-binding Hamiltonian matrix.      !
 !  This sparse matrix is stored in compressed sparse row (CSR) format,  !
 !  which is defined by 3 arrays as follows:                             !
 !                                                                       !
@@ -53,16 +53,23 @@ MODULE hsparse
 !
   use precision,       only: dp
   use options,         only: 
+  use string,          only: 
 
   implicit none
 
-  PUBLIC  :: Hbuild, Hfree, Hval, Hcol, Hrow
-  PRIVATE :: Hdense2sparse
+  PUBLIC  :: Hbuild, Hfree, nH, Hval, Hcol, Hrow, Hmoments, muH
+  PRIVATE :: Hdense, Hdense2sparse, Hsparse2dense
 
-  real(dp), allocatable, dimension (:) :: Hval ! non-zero elements
+! Sparse Hamiltonian. 
+  integer :: nH ! number of non-zero elements
   integer, allocatable, dimension (:) :: Hcol  ! 'Hval' column indexes
   integer, allocatable, dimension (:) :: Hrow  ! 'Hval' index of first
                                                ! non-zero in row j
+  real(dp), allocatable, dimension (:) :: Hval ! non-zero elements
+
+! Moments.
+  real(dp), allocatable, dimension (:) :: muH
+
 
 CONTAINS
 
@@ -70,9 +77,9 @@ CONTAINS
 !  *******************************************************************  !
 !                                Hbuild                                 !
 !  *******************************************************************  !
-!  Description: build the tight-binding hamiltonian matrix according    !
-!  to user options.                                                     !
-!                                                                       !
+!  Description: build the tight-binding Hamiltonian matrix according    !
+!  to user options and allocate the moments array (expectation values   !
+!  of Chebyshev polynomials in the normalized Hamiltonian.              !
 !                                                                       !
 !  Written by Pedro Brandimarte, Dec 2014.                              !
 !  Instituto de Fisica                                                  !
@@ -81,43 +88,31 @@ CONTAINS
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
 !  *********************** INPUT FROM MODULES ************************  !
-!  integer lattOrder              : Lattice order                       !
-!                                   (# of sites at each dimension)      !
+!  integer lattOrder           : Lattice order                          !
+!                                (# of sites at each dimension)         !
+!  integer polDegree           : Degree of polynomial expansion         !
 !  *******************************************************************  !
   subroutine Hbuild
 
 !
 ! Modules
 !
-    use options,         only: lattOrder
+    use options,         only: lattOrder, polDegree
 
 !   Local variables.
     real(dp), allocatable, dimension (:,:) :: Htot
-! TEMP BEGIN
-    integer :: i, j
-! TEMP END
 
 ! TEMP BEGIN
     lattOrder = 5
 ! TEMP END
 
-!   Full hamiltonian matrix (dense representation).
+!   Full Hamiltonian matrix (dense representation).
     allocate (Htot(lattOrder,lattOrder))
 
-! TEMP BEGIN
-    Htot(1,:) = [ 1.0_dp, -1.0_dp,  0.0_dp, -3.0_dp,  0.0_dp]
-    Htot(2,:) = [-2.0_dp,  5.0_dp,  0.0_dp,  0.0_dp,  0.0_dp]
-    Htot(3,:) = [ 0.0_dp,  0.0_dp,  4.0_dp,  6.0_dp,  4.0_dp]
-    Htot(4,:) = [-4.0_dp,  0.0_dp,  2.0_dp,  7.0_dp,  0.0_dp]
-    Htot(5,:) = [ 0.0_dp,  8.0_dp,  0.0_dp,  0.0_dp, -5.0_dp]
+!   Generate the full Hamiltonian in dense representation.
+    call Hdense (Htot, lattOrder)
 
-    do i = 1,5
-       do j = 1,4
-          write (6,'(f5.1)',advance='no') Htot(i,j)
-       enddo
-       write (6,'(f5.1)') Htot(i,5)
-    enddo
-! TEMP END
+!   Renormalize the Hamiltonian.
 
 !   Convert to CSR format.
     call Hdense2sparse (Htot, lattOrder)
@@ -125,8 +120,66 @@ CONTAINS
 !   Free memory.
     deallocate (Htot)
 
+!   Allocatte moments array.
+    allocate (muH(polDegree))
+    muH(1) = 1.0_dp
+
 
   end subroutine Hbuild
+
+
+!  *******************************************************************  !
+!                                Hdense                                 !
+!  *******************************************************************  !
+!  Description: generate the full tight-binding Hamiltonian 'Htot' in   !
+!  dense representation.                                                !
+!                                                                       !
+!  Written by Pedro Brandimarte, Dec 2014.                              !
+!  Instituto de Fisica                                                  !
+!  Universidade de Sao Paulo                                            !
+!  e-mail: brandimarte@gmail.com                                        !
+!  ***************************** HISTORY *****************************  !
+!  Original version:    December 2014                                   !
+!  ****************************** INPUT ******************************  !
+!  real*8 Htot                 : Hamiltonian in dense format            !
+!  real*8 n                    : Order of 'Htot' matrix (lattOrder)     !
+!  *******************************************************************  !
+  subroutine Hdense (Htot, n)
+
+!   Input variables.
+    integer, intent(in) :: n
+    real(dp), intent(inout) :: Htot(n,n)
+
+!   Local variables.
+! TEMP BEGIN
+    integer :: i, j
+! TEMP END
+
+    write (6,'(a,/)') 'Building full tight-binding Hamiltonian matrix'
+
+! TEMP BEGIN
+    Htot(1,:) = [ 1.0_dp, -1.0_dp,  0.0_dp, -3.0_dp,  0.0_dp]
+    Htot(2,:) = [-1.0_dp,  5.0_dp,  0.0_dp,  0.0_dp,  0.0_dp]
+    Htot(3,:) = [ 0.0_dp,  0.0_dp,  4.0_dp,  2.0_dp,  4.0_dp]
+    Htot(4,:) = [-3.0_dp,  0.0_dp,  2.0_dp,  7.0_dp,  0.0_dp]
+    Htot(5,:) = [ 0.0_dp,  0.0_dp,  4.0_dp,  0.0_dp, -5.0_dp]
+!!$    Htot(1,:) = [ 1.0_dp, -1.0_dp,  0.0_dp, -3.0_dp,  0.0_dp]
+!!$    Htot(2,:) = [-2.0_dp,  5.0_dp,  0.0_dp,  0.0_dp,  0.0_dp]
+!!$    Htot(3,:) = [ 0.0_dp,  0.0_dp,  4.0_dp,  6.0_dp,  4.0_dp]
+!!$    Htot(4,:) = [-4.0_dp,  0.0_dp,  2.0_dp,  7.0_dp,  0.0_dp]
+!!$    Htot(5,:) = [ 0.0_dp,  8.0_dp,  0.0_dp,  0.0_dp, -5.0_dp]
+
+    do i = 1,5
+       do j = 1,4
+          write (6,'(f5.1)',advance='no') Htot(i,j)
+       enddo
+       write (6,'(f5.1)') Htot(i,5)
+    enddo
+    write (6,'(a)') ''
+ ! TEMP END
+
+
+  end subroutine Hdense
 
 
 !  *******************************************************************  !
@@ -142,7 +195,7 @@ CONTAINS
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
 !  ****************************** INPUT ******************************  !
-!  real*8 Htot                 : hamiltonian in dense format            !
+!  real*8 Htot                 : Hamiltonian in dense format            !
 !  real*8 n                    : Order of 'Htot' matrix (lattOrder)     !
 !  *******************************************************************  !
   subroutine Hdense2sparse (Htot, n)
@@ -152,10 +205,12 @@ CONTAINS
     real(dp), intent(in) :: Htot(n,n)
 
 !   Local variables.
-    integer :: info, size
+    integer :: info
     integer :: job(8) ! why 8? who knows...
     real(dp), allocatable, dimension (:) :: tmpHval
     integer, allocatable, dimension (:) :: tmpHcol
+
+    write (6,'(a,/)') 'Converting to CSR sparse format'
 
 !   Allocate auxiliary arrays and 'Hrow' from CSR format.
     allocate (tmpHval(n*n))
@@ -181,22 +236,23 @@ CONTAINS
     endif
 
 !   Compute the number of non-zero elements.
-    size = 0
-    do while (size < n*n)
-       if (tmpHcol(size+1) /= 0) then
-          size = size + 1
+    nH = 0
+    do while (nH < n*n)
+       if (tmpHcol(nH+1) /= 0) then
+          nH = nH + 1
        else
           exit
        endif
     enddo
+    write (6,'(a,i,/)') '   number of non-zero elements = ', nH
 
 !   Allocate 'Hval' and 'Hcol' from CSR format.
-    allocate (Hval(size))
-    allocate (Hcol(size))
+    allocate (Hval(nH))
+    allocate (Hcol(nH))
     
 !   Copy from auxiliary arrays.
-    Hval(1:size) = tmpHval(1:size)
-    Hcol(1:size) = tmpHcol(1:size)
+    Hval(1:nH) = tmpHval(1:nH)
+    Hcol(1:nH) = tmpHcol(1:nH)
 
 !   Free memory.
     deallocate (tmpHval)
@@ -207,9 +263,131 @@ CONTAINS
 
 
 !  *******************************************************************  !
+!                             Hsparse2dense                             !
+!  *******************************************************************  !
+!  Description: convert 'Htot' sparse matrix in CSR format to dense     !
+!  representation.                                                      !
+!                                                                       !
+!  Written by Pedro Brandimarte, Dec 2014.                              !
+!  Instituto de Fisica                                                  !
+!  Universidade de Sao Paulo                                            !
+!  e-mail: brandimarte@gmail.com                                        !
+!  ***************************** HISTORY *****************************  !
+!  Original version:    December 2014                                   !
+!  ****************************** INPUT ******************************  !
+!  real*8 Htot                 : Hamiltonian in dense format            !
+!  real*8 n                    : Order of 'Htot' matrix (lattOrder)     !
+!  *******************************************************************  !
+  subroutine Hsparse2dense (Htot, n)
+
+!   Input variables.
+    integer, intent(in) :: n
+    real(dp), intent(inout) :: Htot(n,n)
+
+!   Local variables.
+    integer :: info
+    integer :: job(8) ! why 8? who knows...
+
+    write (6,'(a,/)') 'Converting to dense representation'
+
+    job(1) = 1 ! convert from CSR format to dense
+    job(2) = 1 ! one-based indexing for dense matrix
+    job(3) = 1 ! one-based indexing for CSR format
+    job(4) = 2 ! pass the whole dense matrix
+    job(5) = n*n ! maximum non-zero elements allowed
+    job(6) = 1 ! it is ignored
+
+!   Convert dense matrix 'Htot' to CSR format.
+    call mkl_ddnscsr (job, n, n, Htot, n, Hval, Hcol, Hrow, info)
+
+!   Check if execution was successful.
+    if (info /= 0) then
+       stop 'hsparse: ERROR: when converting to dense representation!'
+    endif
+
+
+  end subroutine Hsparse2dense
+
+
+!  *******************************************************************  !
+!                               Hmoments                                !
+!  *******************************************************************  !
+!  Description: compute the moments, i.e. the expectation values of     !
+!  Chebyshev polynomials in the normalized Hamiltonian.                 !
+!                                                                       !
+!  Written by Pedro Brandimarte, Dec 2014.                              !
+!  Instituto de Fisica                                                  !
+!  Universidade de Sao Paulo                                            !
+!  e-mail: brandimarte@gmail.com                                        !
+!  ***************************** HISTORY *****************************  !
+!  Original version:    December 2014                                   !
+!  ****************************** INPUT ******************************  !
+!  integer state               : Hamiltonian state index                !
+!  *********************** INPUT FROM MODULES ************************  !
+!  integer lattOrder           : Lattice order                          !
+!                                (# of sites at each dimension)         !
+!  integer polDegree           : Degree of polynomial expansion         !
+!  *******************************************************************  !
+  subroutine Hmoments (state)
+
+!
+! Modules
+!
+    use options,         only: lattOrder, polDegree
+    use string,          only: STRconcat
+
+!   Input variables.
+    integer, intent(in) :: state
+
+!   Local variables.
+    integer :: i
+    real(dp), allocatable, dimension (:) :: alpha0, alpha1, alpha2
+    character(len=6) :: matdescra ! why 6? who knows...
+
+    write (6,'(a,i5,/)') 'Computing the moments for state ', state
+
+!   Allocate states and moment arrays.
+    allocate (alpha0(lattOrder))
+    allocate (alpha1(lattOrder))
+    allocate (alpha2(lattOrder))
+
+!   Initialize descriptor.
+    matdescra = 'G' ! general matrix
+    call STRconcat (matdescra, 'L', matdescra) ! it is ignored
+    call STRconcat (matdescra, 'N', matdescra) ! it is ignored
+    call STRconcat (matdescra, 'F', matdescra) ! one-based indexing
+
+!   First 2 momments:
+    alpha0 = 0.0_dp
+    alpha0(state) = 1.0_dp
+    call mkl_dcsrmv ('N', lattOrder, lattOrder, 1.0_dp, matdescra,      &
+         Hval, Hcol, Hrow, Hrow(2), alpha0, 0.0_dp, alpha1)
+    muH(2) = alpha1(state)
+
+    do i = 3,polDegree
+
+!      |s_i+1> = 2 H |s_i> - |s_i-1>
+       call mkl_dcsrmv ('N', lattOrder, lattOrder, 2.0_dp, matdescra,   &
+            Hval, Hcol, Hrow, Hrow(2), alpha1, -1.0_dp, alpha0)
+       alpha2 = alpha0
+       alpha0 = alpha1
+       alpha1 = alpha2
+       muH(i) = alpha2(state)
+
+    enddo
+
+!   Free memory.
+    deallocate (alpha0)
+    deallocate (alpha1)
+    deallocate (alpha2)
+
+  end subroutine Hmoments
+
+
+!  *******************************************************************  !
 !                                 Hfree                                 !
 !  *******************************************************************  !
-!  Description: free the sparse tight-binding hamiltonian matrix.       !
+!  Description: free the sparse tight-binding Hamiltonian matrix.       !
 !                                                                       !
 !                                                                       !
 !  Written by Pedro Brandimarte, Dec 2014.                              !
@@ -225,6 +403,7 @@ CONTAINS
     deallocate (Hval)
     deallocate (Hcol)
     deallocate (Hrow)
+    deallocate (muH)
 
 
   end subroutine Hfree

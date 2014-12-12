@@ -38,9 +38,13 @@ PROGRAM KPM
 !
   use init,            only: initialize
   use end,             only: finalize
-  use hsparse,         only: Hbuild
+  use hsparse,         only: Hbuild, Hmoments
+  use options,         only: lattOrder
 
   implicit none
+
+! Local variables.
+  integer :: i
 
 ! Proper initialization and reading of input options.
   call initialize
@@ -49,6 +53,13 @@ PROGRAM KPM
 
 ! Build system sparse hamiltonian.
   call Hbuild
+
+  do i = 1,lattOrder
+
+!    Compute the moments.
+     call Hmoments (i)
+
+  enddo
 
 ! Proper ending.
   call finalize

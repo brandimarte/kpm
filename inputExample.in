@@ -1,2 +1,4 @@
-SystemLabel    teste
-LatticeOrder   100
+SystemLabel          teste
+LatticeOrder         100
+PolynomialDegree     9
+
