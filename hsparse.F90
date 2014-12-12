@@ -163,36 +163,20 @@ CONTAINS
 
 !   Assign only lower triangular part.
 ! TEMP BEGIN
-    Htot(1,1) =  1.0_dp
-    Htot(2,1) = -1.0_dp
-    Htot(3,1) =  0.0_dp
-    Htot(4,1) = -3.0_dp
-    Htot(5,1) =  0.0_dp
-    Htot(2,2) =  5.0_dp
-    Htot(3,2) =  0.0_dp
-    Htot(4,2) =  0.0_dp
-    Htot(5,2) =  0.0_dp
-    Htot(3,3) =  4.0_dp
-    Htot(3,4) =  2.0_dp
-    Htot(3,5) =  4.0_dp
-    Htot(4,4) =  7.0_dp
-    Htot(4,5) =  0.0_dp
-    Htot(5,5) = -5.0_dp
+    Htot(1,:) = [ 1.0_dp, -1.0_dp,  0.0_dp, -3.0_dp,  0.0_dp]
+    Htot(2,:) = [-1.0_dp,  5.0_dp,  0.0_dp,  0.0_dp,  0.0_dp]
+    Htot(3,:) = [ 0.0_dp,  0.0_dp,  4.0_dp,  2.0_dp,  4.0_dp]
+    Htot(4,:) = [-3.0_dp,  0.0_dp,  2.0_dp,  7.0_dp,  0.0_dp]
+    Htot(5,:) = [ 0.0_dp,  0.0_dp,  4.0_dp,  0.0_dp, -5.0_dp]
 
-!!$    Htot(1,:) = [ 1.0_dp, -1.0_dp,  0.0_dp, -3.0_dp,  0.0_dp]
-!!$    Htot(2,:) = [-1.0_dp,  5.0_dp,  0.0_dp,  0.0_dp,  0.0_dp]
-!!$    Htot(3,:) = [ 0.0_dp,  0.0_dp,  4.0_dp,  2.0_dp,  4.0_dp]
-!!$    Htot(4,:) = [-3.0_dp,  0.0_dp,  2.0_dp,  7.0_dp,  0.0_dp]
-!!$    Htot(5,:) = [ 0.0_dp,  0.0_dp,  4.0_dp,  0.0_dp, -5.0_dp]
-!!$
-!!$    do i = 1,5
-!!$       do j = 1,4
-!!$          write (6,'(f5.1)',advance='no') Htot(i,j)
-!!$       enddo
-!!$       write (6,'(f5.1)') Htot(i,5)
-!!$    enddo
-!!$    write (6,'(a)') ''
- ! TEMP END
+    do i = 1,5
+       do j = 1,4
+          write (6,'(f5.1)',advance='no') Htot(i,j)
+       enddo
+       write (6,'(f5.1)') Htot(i,5)
+    enddo
+    write (6,'(a)') ''
+! TEMP END
 
 
   end subroutine Hdense
