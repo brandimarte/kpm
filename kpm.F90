@@ -38,7 +38,7 @@ PROGRAM KPM
 !
   use init,            only: initialize
   use end,             only: finalize
-  use hsparse,         only: Hbuild, Hmoments
+  use hsparse,         only: Hbuild, Hmoments2
   use options,         only: lattOrder
 
   implicit none
@@ -57,7 +57,7 @@ PROGRAM KPM
   do i = 1,lattOrder
 
 !    Compute the moments.
-     call Hmoments (i)
+     call Hmoments2 (i)
 
   enddo
 

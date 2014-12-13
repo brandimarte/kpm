@@ -58,7 +58,7 @@ MODULE hsparse
   implicit none
 
   PUBLIC  :: Hbuild, Hfree, nH, Hval, Hcol, Hrow, Hmoments, muH,        &
-             HmomentsOdd
+             Hmoments2
   PRIVATE :: Hdense, Hdense2sparse, Hsparse2dense
 
 ! Sparse Hamiltonian. 
@@ -70,9 +70,6 @@ MODULE hsparse
 
 ! Moments.
   real(dp), allocatable, dimension (:) :: muH
-! TEMP BEGIN
-  real(dp), allocatable, dimension (:) :: muH1
-! TEMP END
 
 
 CONTAINS
@@ -131,10 +128,6 @@ CONTAINS
 !   Allocatte moments array.
     allocate (muH(polDegree))
     muH(1) = 1.0_dp
-! TEMP BEGIN
-    allocate (muH1(polDegree))
-    muH1(1) = 1.0_dp
-! TEMP END
 
 
   end subroutine Hbuild
@@ -361,9 +354,6 @@ CONTAINS
     integer :: i
     real(dp), allocatable, dimension (:) :: alpha0, alpha1, alpha2
     character(len=6) :: matdescra ! why 6? who knows...
-! TEMP BEGIN
-!!$    integer :: j
-! TEMP END
 
     write (6,'(a,i5,/)') 'Computing the moments for state ', state
 
@@ -378,50 +368,30 @@ CONTAINS
     call STRconcat (matdescra, 'N', matdescra) ! non-unit diagonal
     call STRconcat (matdescra, 'F', matdescra) ! one-based indexing
 
-!   First 2 momments:
+!   First step.
     alpha0 = 0.0_dp
     alpha0(state) = 1.0_dp
     call mkl_dcsrmv ('N', lattOrder, lattOrder, 1.0_dp, matdescra,      &
          Hval, Hcol, Hrow, Hrow(2), alpha0, 0.0_dp, alpha1)
-! TEMP BEGIN
-!!$    muH(2) = alpha1(state)
-    muH1(2) = alpha1(state)
-! TEMP END
 
-! TEMP BEGIN
-!!$    do j = 1,5
-!!$       write (6,'(f16.1)') alpha1(j)
-!!$    enddo
-!!$    write (6,'(a)') ''
-! TEMP END
+!   Assign the moment.
+    muH(2) = alpha1(state)
 
     do i = 3,polDegree
 
 !      |s_i+1> = 2 H |s_i> - |s_i-1>
        call mkl_dcsrmv ('N', lattOrder, lattOrder, 2.0_dp, matdescra,   &
             Hval, Hcol, Hrow, Hrow(2), alpha1, -1.0_dp, alpha0)
+
+!      Assign the moment.
+       muH(i) = alpha0(state)
+
+!      Update recursive arrays.
        alpha2 = alpha0
-! TEMP BEGIN
-!!$       muH(i) = alpha2(state)
-       muH1(i) = alpha2(state)
-! TEMP END
        alpha0 = alpha1
        alpha1 = alpha2
 
-! TEMP BEGIN
-!!$       do j = 1,5
-!!$          write (6,'(f16.1)') alpha2(j)
-!!$       enddo
-!!$       write (6,'(a)') ''
-! TEMP END
-
     enddo
-
-! TEMP BEGIN
-    do i = 1,polDegree
-       write (6,'(a,i5,f20.15)') 'muH ', i, muH1(i)
-    enddo
-! TEMP END
 
 !   Free memory.
     deallocate (alpha0)
@@ -432,10 +402,17 @@ CONTAINS
 
 
 !  *******************************************************************  !
-!                              HmomentsOdd                              !
+!                               Hmoments2                               !
 !  *******************************************************************  !
 !  Description: compute the moments, i.e. the expectation values of     !
-!  Chebyshev polynomials in the normalized Hamiltonian.                 !
+!  Chebyshev polynomials in the normalized Hamiltonian. This            !
+!  subroutine takes into account the symmetric property from            !
+!  Hamiltonian matrix, and carries out half of matrix-vector products   !
+!  compared to the standard 'Hmoment' subroutine. For this purpose it   !
+!  takes advantage from the following relations:                        !
+!                                                                       !
+!                mu_2n-1 = 2 * <alpha_n|alpha_n> - mu_1                 !
+!                mu_2n = 2 * <alpha_n+1|alpha_n> - mu_2                 !
 !                                                                       !
 !  Written by Pedro Brandimarte, Dec 2014.                              !
 !  Instituto de Fisica                                                  !
@@ -448,18 +425,17 @@ CONTAINS
 !  *********************** INPUT FROM MODULES ************************  !
 !  integer lattOrder           : Lattice order                          !
 !                                (# of sites at each dimension)         !
+!  integer polDegree           : Degree of polynomial expansion         !
 !  integer nsteps              : # of steps for polynomial expansion    !
 !  integer dstart              : Starting step to compute '2n-1' and    !
 !                                '2n' moments                           !
 !  *******************************************************************  !
-  subroutine HmomentsOdd (state)
-
-! CASO EM QUE nsteps EH IMPAR
+  subroutine Hmoments2 (state)
 
 !
 ! Modules
 !
-    use options,         only: lattOrder, nsteps, dstart, polDegree
+    use options,         only: lattOrder, polDegree, nsteps, dstart
     use string,          only: STRconcat
 
     include 'mkl_blas.fi'
@@ -471,9 +447,6 @@ CONTAINS
     integer :: i
     real(dp), allocatable, dimension (:) :: alpha0, alpha1, alpha2
     character(len=6) :: matdescra ! why 6? who knows...
-! TEMP BEGIN
-!!$    integer :: j
-! TEMP END
 
     write (6,'(a,i5,/)') 'Computing the moments for state ', state
 
@@ -488,36 +461,26 @@ CONTAINS
     call STRconcat (matdescra, 'N', matdescra) ! non-unit diagonal
     call STRconcat (matdescra, 'F', matdescra) ! one-based indexing
 
-!   First 2 momments:
+!   First step.
     alpha0 = 0.0_dp
     alpha0(state) = 1.0_dp
     call mkl_dcsrmv ('N', lattOrder, lattOrder, 1.0_dp, matdescra,      &
          Hval, Hcol, Hrow, Hrow(2), alpha0, 0.0_dp, alpha1)
     muH(2) = alpha1(state)
 
-! TEMP BEGIN
-!!$    do j = 1,5
-!!$       write (6,'(f16.1)') alpha1(j)
-!!$    enddo
-!!$    write (6,'(a)') ''
-! TEMP END
-
     do i = 3,dstart-1
 
 !      |s_i+1> = 2 H |s_i> - |s_i-1>
        call mkl_dcsrmv ('N', lattOrder, lattOrder, 2.0_dp, matdescra,   &
             Hval, Hcol, Hrow, Hrow(2), alpha1, -1.0_dp, alpha0)
+
+!      Assign the moment.
+       muH(i) = alpha0(state)
+
+!      Update recursive arrays.
        alpha2 = alpha0
-       muH(i) = alpha2(state)
        alpha0 = alpha1
        alpha1 = alpha2
-
-! TEMP BEGIN
-!!$       do j = 1,5
-!!$          write (6,'(f16.1)') alpha2(j)
-!!$       enddo
-!!$       write (6,'(a)') ''
-! TEMP END
 
     enddo
 
@@ -527,74 +490,54 @@ CONTAINS
 !      |s_i+1> = 2 H |s_i> - |s_i-1>
        call mkl_dcsrmv ('N', lattOrder, lattOrder, 2.0_dp, matdescra,   &
             Hval, Hcol, Hrow, Hrow(2), alpha1, -1.0_dp, alpha0)
-       alpha2 = alpha0
-       muH(i) = alpha2(state)
-       print *, "xi", 2*(i-1), 2*(i-1)+1
-       muH(2*(i-1)) = 2.0_dp * ddot (lattOrder, alpha2, 1, alpha1, 1)   &
+
+!      Compute moments.
+       muH(i) = alpha0(state)
+       muH(2*i-2) = 2.0_dp * ddot (lattOrder, alpha0, 1, alpha1, 1)     &
             - muH(2)
-       muH(2*(i-1)+1) = 2.0_dp * ddot (lattOrder, alpha2, 1, alpha2, 1) &
+       muH(2*i-1) = 2.0_dp * ddot (lattOrder, alpha0, 1, alpha0, 1)     &
             - muH(1)
+
+!      Update recursive arrays.
+       alpha2 = alpha0
        alpha0 = alpha1
        alpha1 = alpha2
 
-! TEMP BEGIN
-!!$       do j = 1,5
-!!$          write (6,'(f16.1)') alpha2(j)
-!!$       enddo
-!!$       write (6,'(a)') ''
-! TEMP END
-
     enddo
-
-! TEMP BEGIN
-    print *, "OIA", polDegree, 2*(nsteps-1)+1
-! TEMP END
 
 !   Last step.
-    if (polDegree < 2*(nsteps-1)+1) then
-
-       print *, "aqui"
+    if (polDegree < 2*nsteps-1) then ! 'polDegree' is even
 
 !      |s_i+1> = 2 H |s_i> - |s_i-1>
        call mkl_dcsrmv ('N', lattOrder, lattOrder, 2.0_dp, matdescra,   &
             Hval, Hcol, Hrow, Hrow(2), alpha1, -1.0_dp, alpha0)
-       muH(nsteps) = alpha0(state)
-       muH(2*(nsteps-1)) = 2.0_dp * ddot (lattOrder, alpha0, 1, alpha1, 1) &
-            - muH(2)
 
-    else
+!      Compute moments.
+       muH(nsteps) = alpha0(state)
+       muH(2*nsteps-2) = 2.0_dp                                         &
+            * ddot (lattOrder, alpha0, 1, alpha1, 1) - muH(2)
+
+    else ! 'polDegree' is odd
 
 !      |s_i+1> = 2 H |s_i> - |s_i-1>
        call mkl_dcsrmv ('N', lattOrder, lattOrder, 2.0_dp, matdescra,   &
             Hval, Hcol, Hrow, Hrow(2), alpha1, -1.0_dp, alpha0)
+
+!      Compute moments.
        muH(nsteps) = alpha0(state)
-       muH(2*(nsteps-1)) = 2.0_dp * ddot (lattOrder, alpha0, 1, alpha1, 1)   &
-            - muH(2)
-       muH(2*(nsteps-1)+1) = 2.0_dp * ddot (lattOrder, alpha0, 1, alpha0, 1) &
-            - muH(1)
+       muH(2*nsteps-2) = 2.0_dp                                         &
+            * ddot (lattOrder, alpha0, 1, alpha1, 1) - muH(2)
+       muH(2*nsteps-1) = 2.0_dp                                         &
+            * ddot (lattOrder, alpha0, 1, alpha0, 1) - muH(1)
 
     endif
-
-! TEMP BEGIN
-    print *, "nsteps = ", nsteps
-    print *, "dstart = ", dstart
-
-    do i = 1,polDegree
-       write (6,'(a,i5,f20.15)') 'muH ', i, muH(i)
-    enddo
-
-    print *, "diferenca"
-    do i = 1,polDegree
-       write (6,'(a,i5,f20.15)') 'muH - muH1', i, muH(i)-muH1(i)
-    enddo
-! TEMP END
 
 !   Free memory.
     deallocate (alpha0)
     deallocate (alpha1)
     deallocate (alpha2)
 
-  end subroutine HmomentsOdd
+  end subroutine Hmoments2
 
 
 !  *******************************************************************  !

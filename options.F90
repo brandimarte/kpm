@@ -43,11 +43,13 @@ MODULE options
 
   integer :: lattOrder    ! Lattice order (# of sites at each dimension)
   integer :: polDegree    ! Degree of Chebyshev polynomial expansion
+  integer :: nsteps       ! Number of steps for polynomial expansion
+  integer :: dstart       ! Starting step to compute 2n-1 and 2n moments
 
-  integer, parameter :: label_length = 60 ! Length of system label
+  integer, parameter :: label_len = 60 ! Length of system label
 
-  character(len=label_length), save :: slabel ! System Label
-                                              ! (to name output files)
+  character(len=label_len), save :: slabel ! System Label
+                                           ! (to name output files)
 
 
 CONTAINS
@@ -67,10 +69,13 @@ CONTAINS
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
 !  ***************************** OUTPUT ******************************  !
-!  integer lattOrder              : Lattice order                       !
-!                                   (# of sites at each dimension)      !
-!  integer polDegree              : Degree of polynomial expansion      !
-!  character(label_length) slabel : System Label (for output files)     !
+!  integer lattOrder           : Lattice order                          !
+!                                (# of sites at each dimension)         !
+!  integer polDegree           : Degree of polynomial expansion         !
+!  integer nsteps              : # of steps for polynomial expansion    !
+!  integer dstart              : Starting step to compute '2n-1' and    !
+!                                '2n' moments                           !
+!  character(label_len) slabel : System Label (for output files)        !
 !  *******************************************************************  !
   subroutine OPTread
 
@@ -100,10 +105,15 @@ CONTAINS
     if (polDegree < 3) then
        stop 'OPTread: ERROR: polynomial degree too small!'
     endif
-    if (MOD(polDegree,2) /= 0) polDegree = polDegree + 1
     write (6,4)                                                         &
          'OPTread: Degree of Chebyshev polynomial expansion      =',    &
          polDegree
+    nsteps = polDegree / 2 + 1
+    if (MOD(polDegree/2,2) == 0) then
+       dstart = (nsteps + 1) / 2 + 1
+    else
+       dstart = (nsteps + 1) / 2 + 1
+    endif
 
     write (6,'(2a)') 'OPTread: ', repeat('*', 70)
 
