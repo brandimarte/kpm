@@ -38,7 +38,8 @@ PROGRAM KPM
 !
   use init,            only: initialize
   use end,             only: finalize
-  use hsparse,         only: Hbuild, Hmoments2
+  use hsparse,         only: Hbuild
+  use moment,          only: Minit, MomentsH2
   use options,         only: lattOrder
 
   implicit none
@@ -54,10 +55,13 @@ PROGRAM KPM
 ! Build system sparse hamiltonian.
   call Hbuild
 
+! Initialize moment array.
+  call Minit
+
   do i = 1,lattOrder
 
 !    Compute the moments.
-     call Hmoments2 (i)
+     call MomentsH2 (i)
 
   enddo
 

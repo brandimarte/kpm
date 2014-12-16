@@ -1,4 +1,9 @@
 SystemLabel          teste
 LatticeOrder         100
 PolynomialDegree     99
+Hopping             -2.2 eV
+DisorderBroad        1.5 eV
+EnergyMin           -5.0 eV
+EnergyMax            5.0 eV
+RescaleCutOff        0.01
 

@@ -39,6 +39,7 @@ MODULE end
   use init,            only: 
   use io,              only: 
   use hsparse,         only: 
+  use moment,          only: 
 
   implicit none
 
@@ -72,6 +73,7 @@ CONTAINS
     use init,            only: time_begin
     use io,              only: IOfree
     use hsparse,         only: Hfree
+    use moment,          only: Mfree
 
 !   Local variables.
     real(dp) :: time_end
@@ -82,6 +84,7 @@ CONTAINS
     write (6,'(/,a)', ADVANCE='no') 'finalize: Freeing memory...'
     call IOfree
     call Hfree
+    call Mfree
 
     write (6,'(a,/)') ' done!'
  

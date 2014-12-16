@@ -35,6 +35,7 @@ MODULE options
 !
 !   Modules
 !
+  use precision,       only: dp
   use fdf
 
   implicit none
@@ -47,6 +48,12 @@ MODULE options
   integer :: dstart       ! Starting step to compute 2n-1 and 2n moments
 
   integer, parameter :: label_len = 60 ! Length of system label
+
+  real(dp) EnergyMin      ! Lower limit for Hamiltonian eigenvalues
+  real(dp) EnergyMax      ! Upper limit for Hamiltonian eigenvalues
+  real(dp) delta          ! Cutoff for stability in rescaling to [-1,1]
+  real(dp) thop           ! Hopping energy between nearest neighbors
+  real(dp) dW             ! On-site disorder broadening
 
   character(len=label_len), save :: slabel ! System Label
                                            ! (to name output files)
@@ -75,6 +82,11 @@ CONTAINS
 !  integer nsteps              : # of steps for polynomial expansion    !
 !  integer dstart              : Starting step to compute '2n-1' and    !
 !                                '2n' moments                           !
+!  real*8 EnergyMin            : Lower limit for eigenvalues            !
+!  real*8 EnergyMax            : Upper limit for eigenvalues            !
+!  real*8 delta                : Cutoff for stability in rescaling      !
+!  real*8 thop                 : Hopping energy between 1st neighbors   !
+!  real*8 dW                   : On-site disorder broadening            !
 !  character(label_len) slabel : System Label (for output files)        !
 !  *******************************************************************  !
   subroutine OPTread
@@ -114,6 +126,36 @@ CONTAINS
     else
        dstart = (nsteps + 1) / 2 + 1
     endif
+
+!   Lower limit for Hamiltonian eigenvalues.
+    EnergyMin = fdf_physical ('EnergyMin', -10.0_dp, 'eV')
+    write (6,6)                                                         &
+         'OPTread: Lower limit for Hamiltonian eigenvalues       =',    &
+         EnergyMin, ' eV'
+
+!   Upper limit for Hamiltonian eigenvalues.
+    EnergyMax = fdf_physical ('EnergyMax', 10.0_dp, 'eV')
+    write (6,6)                                                         &
+         'OPTread: Upper limit for Hamiltonian eigenvalues       =',    &
+         EnergyMax, ' eV'
+
+!   Cutoff for stability in rescaling to [-1,1].
+    delta  = fdf_double ('RescaleCutOff', 0.01_dp)
+    write(6,9)                                                          &
+         'OPTread: Cutoff for stability in rescaling to [-1,1]   =',    &
+         delta
+
+!   Hopping energy between nearest neighbors.
+    thop = fdf_physical ('Hopping', 0.5_dp, 'eV')
+    write (6,6)                                                         &
+         'OPTread: Hopping energy between nearest neighbors      =',    &
+         thop, ' eV'
+
+!   On-site disorder broadening.
+    dW = fdf_physical ('DisorderBroad', 2.0_dp, 'eV')
+    write (6,6)                                                         &
+         'OPTread: On-site disorder broadening                   =',    &
+         dW, ' eV'
 
     write (6,'(2a)') 'OPTread: ', repeat('*', 70)
 
