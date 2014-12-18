@@ -18,10 +18,14 @@
 !  distributed along with this program or at                            !
 !  <http://www.gnu.org/licenses/gpl.html>).                             !
 !  *******************************************************************  !
-!                            MODULE hsparse                             !
+!                              MODULE hlm                               !
 !  *******************************************************************  !
-!  Description: sparse tight-binding Hamiltonian matrix in compressed   !
-!  sparse row (CSR) format, which is defined by 3 arrays as follows:    !
+!  Description: build the sparse tight-binding Hamiltonian matrix       !
+!  using less memory (it uses an abstract data type for storing the     !
+!  indexes of all non-zero elements and then build the Hamiltonian      !
+!  directly in sparse format). This sparse matrix is stored in          !
+!  compressed sparse row (CSR) format, which is defined by 3 arrays as  !
+!  follows:                                                             !
 !                                                                       !
 !  real*8 Hval(nElem)  : contains the 'nElem' non-zero elements         !
 !  integer Hcol(nElem) : i-th element corresponds to the column index   !
@@ -45,35 +49,31 @@
 !  Original version:    December 2014                                   !
 !  *******************************************************************  !
 
-MODULE hsparse
+MODULE hlm
 
 !
 ! Modules
 !
-  use precision,       only: dp
+  use options,         only: 
+  use hsparse,         only: 
+  use hadt,            only: 
 
   implicit none
 
-  PUBLIC  :: Hfree, nH, nElem, Hval, Hcol, Hrow
+  PUBLIC  :: HLMbuild
   PRIVATE ! default is private
-
-  integer :: nH ! order of Hamiltonian matrix
-  integer :: nElem ! number of non-zero elements
-
-  integer, allocatable, dimension (:) :: Hcol  ! 'Hval' column indexes
-  integer, allocatable, dimension (:) :: Hrow  ! 'Hval' index of first
-                                               ! non-zero in row j
-
-  real(dp), allocatable, dimension (:) :: Hval ! non-zero elements
 
 
 CONTAINS
 
 
 !  *******************************************************************  !
-!                                 Hfree                                 !
+!                               HLMbuild                                !
 !  *******************************************************************  !
-!  Description: free the sparse tight-binding Hamiltonian matrix.       !
+!  Description: build the tight-binding Hamiltonian matrix according    !
+!  to user options using less memory (it uses an abstract data type     !
+!  for storing the indexes of all non-zero elements and then build the  !
+!  Hamiltonian directly in sparse CSR format).                          !
 !                                                                       !
 !  Written by Pedro Brandimarte, Dec 2014.                              !
 !  Instituto de Fisica                                                  !
@@ -81,20 +81,35 @@ CONTAINS
 !  e-mail: brandimarte@gmail.com                                        !
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
+!  *********************** INPUT FROM MODULES ************************  !
+!  integer lattOrder           : Lattice order                          !
+!                                (# of sites at each dimension)         !
+!  integer nH                  : Array size (order of Hamiltonian)      !
 !  *******************************************************************  !
-  subroutine Hfree
+  subroutine HLMbuild
+
+!
+! Modules
+!
+    use options,         only: lattOrder
+    use hsparse,         only: nH
+    use hadt,            only: ADTcreate, ADTfree
+
+!   Order of the full tight-binding Hamiltonian.
+    nH = lattOrder*lattOrder
+
+!   Create the abstract data structure.
+    call ADTcreate (nH)
 
 !   Free memory.
-    deallocate (Hval)
-    deallocate (Hcol)
-    deallocate (Hrow)
+    call ADTfree (nH)
 
 
-  end subroutine Hfree
+  end subroutine HLMbuild
 
 
 !  *******************************************************************  !
 
 
-END MODULE hsparse
+END MODULE hlm
 

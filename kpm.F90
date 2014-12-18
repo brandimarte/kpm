@@ -38,9 +38,10 @@ PROGRAM KPM
 !
   use init,            only: initialize
   use end,             only: finalize
-  use hsparse,         only: Hbuild
+  use hstd,            only: HSTDbuild
+  use hlm,             only: HLMbuild
   use moment,          only: Minit, MomentsH2
-  use options,         only: lattOrder
+  use options,         only: lattOrder, memory
 
   implicit none
 
@@ -53,7 +54,11 @@ PROGRAM KPM
   write (6,'(/,31("*"),a,31("*"),/)') ' KPM Calculation '
 
 ! Build system sparse hamiltonian.
-  call Hbuild
+  if (memory) then
+     call HLMbuild ! use less memory
+  else
+     call HSTDbuild ! standard method
+  endif
 
 ! Initialize moment array.
   call Minit

@@ -18,24 +18,13 @@
 !  distributed along with this program or at                            !
 !  <http://www.gnu.org/licenses/gpl.html>).                             !
 !  *******************************************************************  !
-!                            MODULE hsparse                             !
+!                            MODULE hadt                                !
 !  *******************************************************************  !
-!  Description: sparse tight-binding Hamiltonian matrix in compressed   !
-!  sparse row (CSR) format, which is defined by 3 arrays as follows:    !
-!                                                                       !
-!  real*8 Hval(nElem)  : contains the 'nElem' non-zero elements         !
-!  integer Hcol(nElem) : i-th element corresponds to the column index   !
-!                        of the i-th element from 'Hval' array          !
-!  integer Hrow(nH+1)  : j-th element corresponds to the index of the   !
-!                        element in 'Hval' that is first non-zero       !
-!                        element in a row j                             !
-!                                                                       !
-!  For calling BLAS subroutines with the general NIST CSR format,       !
-!  which has 2 arrays ('pointerB' and 'pointerE') in place of 'Hrow',   !
-!  such as:                                                             !
-!     subroutine routine (...,  Hval, Hcol, pointerB, pointerE, ...)    !
-!  one should call as follows:                                          !
-!     call routine (...,  Hval, Hcol, Hrow, Hrow(2), ...)               !
+!  Description: abstract data type implementation for building the      !
+!  tight-binding Hamiltonian in sparse form without consuming too much  !
+!  memory. It consists of an array 'idxH' of pointers to linked lists   !
+!  containing the site indexes corresponding to non-zero hopping        !
+!  energies (only lower triangular part).                               !
 !                                                                       !
 !  Written by Pedro Brandimarte, Dec 2014.                              !
 !  Instituto de Fisica                                                  !
@@ -45,35 +34,33 @@
 !  Original version:    December 2014                                   !
 !  *******************************************************************  !
 
-MODULE hsparse
-
-!
-! Modules
-!
-  use precision,       only: dp
+MODULE hadt
 
   implicit none
 
-  PUBLIC  :: Hfree, nH, nElem, Hval, Hcol, Hrow
+  PUBLIC  :: ADTcreate, ADTfree, idxHop, idxH
   PRIVATE ! default is private
 
-  integer :: nH ! order of Hamiltonian matrix
-  integer :: nElem ! number of non-zero elements
+! Linked list with indexes of non-zero hopping
+! energy (only lower triangular part).
+  TYPE idxHop
+     integer :: item
+     TYPE(idxHop), pointer :: next
+  END TYPE idxHop
 
-  integer, allocatable, dimension (:) :: Hcol  ! 'Hval' column indexes
-  integer, allocatable, dimension (:) :: Hrow  ! 'Hval' index of first
-                                               ! non-zero in row j
-
-  real(dp), allocatable, dimension (:) :: Hval ! non-zero elements
+! Contain all hopping indexes from the lower triangular
+! part of the full tight-binding Hamiltonian.
+  TYPE(idxHop), dimension (:), allocatable :: idxH
 
 
 CONTAINS
 
 
 !  *******************************************************************  !
-!                                 Hfree                                 !
+!                               ADTcreate                               !
 !  *******************************************************************  !
-!  Description: free the sparse tight-binding Hamiltonian matrix.       !
+!  Description: create the abstract data structure (array of type       !
+!  'idxHop' with size 'nH').                                            !
 !                                                                       !
 !  Written by Pedro Brandimarte, Dec 2014.                              !
 !  Instituto de Fisica                                                  !
@@ -81,20 +68,68 @@ CONTAINS
 !  e-mail: brandimarte@gmail.com                                        !
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
+!  ****************************** INPUT ******************************  !
+!  integer nH                  : Array size (order of Hamiltonian)      !
 !  *******************************************************************  !
-  subroutine Hfree
+  subroutine ADTcreate (nH)
 
-!   Free memory.
-    deallocate (Hval)
-    deallocate (Hcol)
-    deallocate (Hrow)
+!   Input variables.
+    integer, intent(in) :: nH
+
+!   Local variables.
+    integer :: i
+
+!   Allocate abstract data structure and initialize.
+    allocate (idxH(nH))
+    do i = 1,nH
+       idxH(i)%next => NULL()
+    enddo
 
 
-  end subroutine Hfree
+  end subroutine ADTcreate
+
+
+!  *******************************************************************  !
+!                                ADTfree                                !
+!  *******************************************************************  !
+!  Description: free the abstract data type.                            !
+!                                                                       !
+!  Written by Pedro Brandimarte, Dec 2014.                              !
+!  Instituto de Fisica                                                  !
+!  Universidade de Sao Paulo                                            !
+!  e-mail: brandimarte@gmail.com                                        !
+!  ***************************** HISTORY *****************************  !
+!  Original version:    December 2014                                   !
+!  ****************************** INPUT ******************************  !
+!  integer nH                  : Array  size (order of Hamiltonian)     !
+!  *******************************************************************  !
+  subroutine ADTfree (nH)
+
+!   Input variables.
+    integer, intent(in) :: nH
+
+!   Local variables.
+    integer :: i
+    TYPE(idxHop), pointer :: t
+
+!   Free the linked lists (the first element is an empty list).
+    do i = 2,nH
+       do while (ASSOCIATED(idxH(i)%next))
+          t => idxH(i)%next
+          idxH(i)%next => t%next
+          deallocate (t)
+       enddo
+    enddo
+
+!   Free the array of type 'idxHlwr'.
+    deallocate (idxH)
+
+
+  end subroutine ADTfree
 
 
 !  *******************************************************************  !
 
 
-END MODULE hsparse
+END MODULE hadt
 

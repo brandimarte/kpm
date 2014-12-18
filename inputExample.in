@@ -7,4 +7,5 @@ EnergyMin           -5.0 eV
 EnergyMax            5.0 eV
 RescaleCutOff        0.01
 NumThreads           4
-LessMemory           F
+LessMemory           T
+

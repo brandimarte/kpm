@@ -62,7 +62,7 @@ CONTAINS
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
 !  *********************** INPUT FROM MODULES ************************  !
-!  real*8 time_begin              : Initial processor time in seconds   !
+!  real*8 time_begin           : Initial processor time in seconds      !
 !  *******************************************************************  !
   subroutine finalize
 
