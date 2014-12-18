@@ -78,8 +78,8 @@ CONTAINS
        mt(mti) = iand (69069 * mt(mti-1), -1)
 100 continue
 
-    return
-  end
+  end subroutine sgenrand
+
 
 !  *******************************************************************  !
 !                                genrand                                !
@@ -166,8 +166,8 @@ CONTAINS
        genrand = dble(y) / (2.0d0**32 - 1.0d0)
     endif
 
-  return
-  end
+
+  end function genrand
 
 
 !  *******************************************************************  !

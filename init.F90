@@ -72,7 +72,7 @@ CONTAINS
 ! Modules
 !
     use io,              only: IOinit
-    use options,         only: OPTread
+    use options,         only: OPTread, NumThreads
 
 !   Print version information.
     call header
@@ -88,6 +88,9 @@ CONTAINS
 
 !   Read simulation data.
     call OPTread
+
+!   Set number of threads for parallel (multi-threaded) MKL subroutines.
+    call mkl_set_num_threads (NumThreads)
 
 
   end subroutine initialize
