@@ -18,28 +18,11 @@
 !  distributed along with this program or at                            !
 !  <http://www.gnu.org/licenses/gpl.html>).                             !
 !  *******************************************************************  !
-!                              MODULE hlm                               !
+!                            MODULE lattice                             !
 !  *******************************************************************  !
-!  Description: build the sparse tight-binding Hamiltonian matrix       !
-!  using less memory (it uses an abstract data type for storing the     !
-!  indexes of all non-zero elements and then build the Hamiltonian      !
-!  directly in sparse format). This sparse matrix is stored in          !
-!  compressed sparse row (CSR) format, which is defined by 3 arrays as  !
-!  follows:                                                             !
-!                                                                       !
-!  real*8 Hval(nElem)  : contains the 'nElem' non-zero elements         !
-!  integer Hcol(nElem) : i-th element corresponds to the column index   !
-!                        of the i-th element from 'Hval' array          !
-!  integer Hrow(nH+1)  : j-th element corresponds to the index of the   !
-!                        element in 'Hval' that is first non-zero       !
-!                        element in a row j                             !
-!                                                                       !
-!  For calling BLAS subroutines with the general NIST CSR format,       !
-!  which has 2 arrays ('pointerB' and 'pointerE') in place of 'Hrow',   !
-!  such as:                                                             !
-!     subroutine routine (...,  Hval, Hcol, pointerB, pointerE, ...)    !
-!  one should call as follows:                                          !
-!     call routine (...,  Hval, Hcol, Hrow, Hrow(2), ...)               !
+!  Description: subroutines for dealing with square 2D lattice          !
+!  (lattice indexation, find first neighbors, check boundary            !
+!  conditions etc.).                                                    !
 !                                                                       !
 !  Written by Pedro Brandimarte, Dec 2014.                              !
 !  Instituto de Fisica                                                  !
@@ -49,130 +32,142 @@
 !  Original version:    December 2014                                   !
 !  *******************************************************************  !
 
-MODULE hlm
+MODULE lattice
 
 !
 ! Modules
 !
   use options,         only: 
-  use hsparse,         only: 
-  use hadt,            only: 
-  use lattice,         only: 
 
   implicit none
 
-  PUBLIC  :: HLMbuild
-  PRIVATE :: HLMhopping
+  PUBLIC  :: LATTsite, LATTneighbors
+  PRIVATE :: LATTpbcTest
 
 
 CONTAINS
 
 
 !  *******************************************************************  !
-!                               HLMbuild                                !
+!                               LATTsite                                !
 !  *******************************************************************  !
-!  Description: build the tight-binding Hamiltonian matrix according    !
-!  to user options using less memory (it uses an abstract data type     !
-!  for storing the indexes of all non-zero elements and then build the  !
-!  Hamiltonian directly in sparse CSR format).                          !
+!  Description: Given the site cartesian coordinates, it returns the    !
+!  site label (index of 2D matrix in column-major order).               !
 !                                                                       !
-!  Written by Pedro Brandimarte, Dec 2014.                              !
+!  Written by Eric de Castro e Andrade, Dec 2014.                       !
 !  Instituto de Fisica                                                  !
 !  Universidade de Sao Paulo                                            !
-!  e-mail: brandimarte@gmail.com                                        !
+!  e-mail: eandrade@ift.unesp.br                                        !
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
+!  ****************************** INPUT ******************************  !
+!  integer ix                  : X lattice cartesian coordinate         !
+!  integer iy                  : Y lattice cartesian coordinate         !
 !  *********************** INPUT FROM MODULES ************************  !
 !  integer lattOrder           : Lattice order                          !
 !                                (# of sites at each dimension)         !
-!  integer nH                  : Array size (order of Hamiltonian)      !
 !  *******************************************************************  !
-  subroutine HLMbuild
+  integer function LATTsite (ix, iy)
 
 !
 ! Modules
 !
     use options,         only: lattOrder
-    use hsparse,         only: nH
-    use hadt,            only: ADTcreate, ADTfree
 
-!   Order of the full tight-binding Hamiltonian.
-    nH = lattOrder*lattOrder
+!   Input variables.
+    integer, intent(in) :: ix, iy
 
-!   Create the abstract data structure (ADT).
-    call ADTcreate (nH)
-
-!   Assing the non-diagonal indexes to the ADT.
-    call HLMhopping
-
-!   Free memory.
-    call ADTfree (nH)
+    LATTsite = ix + (iy - 1) * lattOrder
 
 
-  end subroutine HLMbuild
+  end function LATTsite
 
 
 !  *******************************************************************  !
-!                              HLMhopping                               !
+!                             LATTneighbors                             !
 !  *******************************************************************  !
-!  Description: Assign the non-diagonal indexes of the full             !
-!  tight-binding Hamiltonian and assing them to the ADT.                !
+!  Description: Given the site cartesian coordinates, it finds its 4    !
+!  nearest neighbors on a square lattice. Note that since the matrix    !
+!  is symmetric (if i is neighbor of j, than j is neighbor of i) we     !
+!  only need to find half of first neighbors.                           !
 !                                                                       !
-!  Written by Pedro Brandimarte, Dec 2014.                              !
+!  Written by Eric de Castro e Andrade, Dec 2014.                       !
 !  Instituto de Fisica                                                  !
 !  Universidade de Sao Paulo                                            !
-!  e-mail: brandimarte@gmail.com                                        !
+!  e-mail: eandrade@ift.unesp.br                                        !
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
-!  *********************** INPUT FROM MODULES ************************  !
-!  integer lattOrder           : Lattice order                          !
-!                                (# of sites at each dimension)         !
+!  ****************************** INPUT ******************************  !
+!  integer ix                  : X lattice cartesian coordinate         !
+!  integer iy                  : Y lattice cartesian coordinate         !
+!  ***************************** OUTPUT ******************************  !
+!  integer isiten(4)           : Nearest neighbors from site 'ix,iy'    !
 !  *******************************************************************  !
-  subroutine HLMhopping
+  subroutine LATTneighbors (ix, iy, isiten)
 
-!
-! Modules
-!
-    use options,         only: lattOrder
-    use lattice,         only: LATTsite, LATTneighbors
-    use hadt,            only: ADTinsert
+!   Input variables.
+    integer, intent(in) :: ix, iy
+    integer, intent(out) :: isiten(2)
 
 !   Local variables.
-    integer :: x, y, site
-    integer :: neigh(2)
+    integer :: neigh, site
 
-    do y = 1,lattOrder
-       do x = 1,lattOrder
+!   Under neighbor in X.
+    neigh = ix + 1
+    call LATTpbcTest (neigh)
+    site = LATTsite (neigh, iy)
+    isiten(1) = site
 
-!         Site index.
-          site = LATTsite (x, y)
-
-!         Find nearest neighbors.
-          call LATTneighbors (x, y, neigh)
-
-!         Assign the first neighbor.
-          if (site > neigh(1)) then
-             call ADTinsert (site, neigh(1))
-          else
-             call ADTinsert (neigh(1), site)
-          endif
-
-!         Assign the second neighbor.
-          if (site > neigh(2)) then
-             call ADTinsert (site, neigh(2))
-          else
-             call ADTinsert (neigh(2), site)
-          endif
-
-       enddo
-    enddo
+!   Right neighbor in Y.
+    neigh = iy + 1
+    call LATTpbcTest (neigh)
+    site = LATTsite (ix, neigh)
+    isiten(2) = site
 
 
-  end subroutine HLMhopping
+  end subroutine LATTneighbors
+
+
+!  *******************************************************************  !
+!                              LATTpbcTest                              !
+!  *******************************************************************  !
+!  Description: Receive the site label and impose periodic boundary     !
+!  conditions if necessary.                                             !
+!                                                                       !
+!  Written by Eric de Castro e Andrade, Dec 2014.                       !
+!  Instituto de Fisica                                                  !
+!  Universidade de Sao Paulo                                            !
+!  e-mail: eandrade@ift.unesp.br                                        !
+!  ***************************** HISTORY *****************************  !
+!  Original version:    December 2014                                   !
+!  ************************** INPUT/OUTPUT ***************************  !
+!  integer site                : Full Hamiltonian index                 !
+!  *********************** INPUT FROM MODULES ************************  !
+!  integer lattOrder           : Lattice order                          !
+!                                (# of sites at each dimension)         !
+!  *******************************************************************  !
+  subroutine LATTpbcTest (site)
+
+!
+! Modules
+!
+    use options,         only: lattOrder
+
+!   Input variables.
+    integer, intent(inout) :: site
+
+    if (site > lattOrder) then
+       site = site - lattOrder
+    elseif (site < 1) then
+       site = site + lattOrder
+    endif
+
+
+  end subroutine LATTpbcTest
 
 
 !  *******************************************************************  !
 
 
-END MODULE hlm
+END MODULE lattice
 

@@ -55,15 +55,15 @@ MODULE hstd
 !
   use precision,       only: dp
   use options,         only: 
-  use random,          only: 
   use hsparse,         only: 
+  use random,          only: 
+  use lattice,         only: 
 
   implicit none
 
   PUBLIC  :: HSTDbuild
-  PRIVATE :: HSTDdense, HSTDsiteEnergy, HSTDhopping, HSTDlsite,         &
-             HSTDneighbors, HSTDpbcTest, HSTDrescale, HSTDdense2sparse, &
-             HSTDsparse2dense
+  PRIVATE :: HSTDdense, HSTDenergies, HSTDhopping, HSTDrescale,         &
+             HSTDdense2sparse, HSTDsparse2dense
 
 
 CONTAINS
@@ -152,7 +152,7 @@ CONTAINS
     Htot = 0.0_dp
 
 !   Assign diagonal entries with on-site energy.
-    call HSTDsiteEnergy (nH, Htot)
+    call HSTDenergies (nH, Htot)
 
 !   Assign non-diagonal entries with hopping energy.
     call HSTDhopping (nH, Htot)
@@ -162,7 +162,7 @@ CONTAINS
 
 
 !  *******************************************************************  !
-!                            HSTDsiteEnergy                             !
+!                             HSTDenergies                              !
 !  *******************************************************************  !
 !  Description: Assign the diagonal entries of the full tight-binding   !
 !  Hamiltonian, i.e. the on-site energies, which are chosen from a      !
@@ -184,7 +184,7 @@ CONTAINS
 !  *********************** INPUT FROM MODULES ************************  !
 !  real*8 dW                   : On-site disorder broadening            !
 !  *******************************************************************  !
-  subroutine HSTDsiteEnergy (nH, Htot)
+  subroutine HSTDenergies (nH, Htot)
 
 !
 ! Modules
@@ -211,7 +211,7 @@ CONTAINS
     enddo
 
 
-  end subroutine HSTDsiteEnergy
+  end subroutine HSTDenergies
 
 
 !  *******************************************************************  !
@@ -240,154 +240,37 @@ CONTAINS
 ! Modules
 !
     use options,         only: lattOrder, thop
+    use lattice,         only: LATTsite, LATTneighbors
 
 !   Input variables.
     integer, intent(in) :: nH
     real(dp), intent(inout) :: Htot(nH,nH)
 
 !   Local variables.
-    integer :: ix, iy, is
-    integer :: isiten(2)
+    integer :: x, y, is
+    integer :: neigh(2)
 
-    do iy = 1,lattOrder
-       do ix = 1,lattOrder
+    do y = 1,lattOrder
+       do x = 1,lattOrder
 
 !         Site index.
-          is = HSTDlsite (ix, iy)
+          is = LATTsite (x, y)
 
 !         Find nearest neighbors.
-          call HSTDneighbors (ix, iy, isiten)
+          call LATTneighbors (x, y, neigh)
 
 !         Assign hopping energy.
-          Htot(is,isiten(1)) = -thop
-          Htot(isiten(1),is) = -thop
+          Htot(is,neigh(1)) = -thop
+          Htot(neigh(1),is) = -thop
 
-          Htot(is,isiten(2)) = -thop
-          Htot(isiten(2),is) = -thop
+          Htot(is,neigh(2)) = -thop
+          Htot(neigh(2),is) = -thop
 
        enddo
     enddo
 
 
   end subroutine HSTDhopping
-
-
-!  *******************************************************************  !
-!                               HSTDlsite                               !
-!  *******************************************************************  !
-!  Description: Given the site cartesian coordinates, it returns the    !
-!  site label (index of 2D matrix in column-major order).               !
-!                                                                       !
-!  Written by Eric de Castro e Andrade, Dec 2014.                       !
-!  Instituto de Fisica                                                  !
-!  Universidade de Sao Paulo                                            !
-!  e-mail: eandrade@ift.unesp.br                                        !
-!  ***************************** HISTORY *****************************  !
-!  Original version:    December 2014                                   !
-!  ****************************** INPUT ******************************  !
-!  integer ix                  : X lattice cartesian coordinate         !
-!  integer iy                  : Y lattice cartesian coordinate         !
-!  *********************** INPUT FROM MODULES ************************  !
-!  integer lattOrder           : Lattice order                          !
-!                                (# of sites at each dimension)         !
-!  *******************************************************************  !
-  integer function HSTDlsite (ix, iy)
-
-!
-! Modules
-!
-    use options,         only: lattOrder
-
-!   Input variables.
-    integer, intent(in) :: ix, iy
-
-    HSTDlsite = ix + (iy - 1) * lattOrder
-
-
-  end function HSTDlsite
-
-
-!  *******************************************************************  !
-!                             HSTDneighbors                             !
-!  *******************************************************************  !
-!  Description: Given the site cartesian coordinates, it finds its 4    !
-!  nearest neighbors on a square lattice. Note that since the matrix    !
-!  is symmetric (if i is neighbor of j, than j is neighbor of i) we     !
-!  only need to find half of first neighbors.                           !
-!                                                                       !
-!  Written by Eric de Castro e Andrade, Dec 2014.                       !
-!  Instituto de Fisica                                                  !
-!  Universidade de Sao Paulo                                            !
-!  e-mail: eandrade@ift.unesp.br                                        !
-!  ***************************** HISTORY *****************************  !
-!  Original version:    December 2014                                   !
-!  ****************************** INPUT ******************************  !
-!  integer ix                  : X lattice cartesian coordinate         !
-!  integer iy                  : Y lattice cartesian coordinate         !
-!  ***************************** OUTPUT ******************************  !
-!  integer isiten(4)           : Nearest neighbors from site 'ix,iy'    !
-!  *******************************************************************  !
-  subroutine HSTDneighbors (ix, iy, isiten)
-
-!   Input variables.
-    integer, intent(in) :: ix, iy
-    integer, intent(out) :: isiten(2)
-
-!   Local variables.
-    integer :: neigh, site
-
-!   Under neighbor in X.
-    neigh = ix + 1
-    call HSTDpbcTest (neigh)
-    site = HSTDlsite (neigh, iy)
-    isiten(1) = site
-
-!   Right neighbor in Y.
-    neigh = iy + 1
-    call HSTDpbcTest (neigh)
-    site = HSTDlsite (ix, neigh)
-    isiten(2) = site
-
-
-  end subroutine HSTDneighbors
-
-
-!  *******************************************************************  !
-!                              HSTDpbcTest                              !
-!  *******************************************************************  !
-!  Description: Receive the site label and impose periodic boundary     !
-!  conditions if necessary.                                             !
-!                                                                       !
-!  Written by Eric de Castro e Andrade, Dec 2014.                       !
-!  Instituto de Fisica                                                  !
-!  Universidade de Sao Paulo                                            !
-!  e-mail: eandrade@ift.unesp.br                                        !
-!  ***************************** HISTORY *****************************  !
-!  Original version:    December 2014                                   !
-!  ************************** INPUT/OUTPUT ***************************  !
-!  integer site                : Full Hamiltonian index                 !
-!  *********************** INPUT FROM MODULES ************************  !
-!  integer lattOrder           : Lattice order                          !
-!                                (# of sites at each dimension)         !
-!  *******************************************************************  !
-  subroutine HSTDpbcTest (site)
-
-!
-! Modules
-!
-    use options,         only: lattOrder
-
-!   Input variables.
-    integer, intent(inout) :: site
-
-    if (site > lattOrder) then
-       site = site - lattOrder
-    elseif (site < 1) then
-       site = site + lattOrder
-    endif
-
-
-  end subroutine HSTDpbcTest
 
 
 !  *******************************************************************  !

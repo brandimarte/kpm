@@ -38,7 +38,7 @@ MODULE hadt
 
   implicit none
 
-  PUBLIC  :: ADTcreate, ADTfree, idxHop, idxH
+  PUBLIC  :: ADTcreate, ADTinsert, ADTfree, idxHop, idxH
   PRIVATE ! default is private
 
 ! Linked list with indexes of non-zero hopping
@@ -50,7 +50,11 @@ MODULE hadt
 
 ! Contain all hopping indexes from the lower triangular
 ! part of the full tight-binding Hamiltonian.
-  TYPE(idxHop), dimension (:), allocatable :: idxH
+  TYPE idxHopPtr
+     TYPE(idxHop), pointer :: p
+  END TYPE idxHopPtr
+
+  TYPE(idxHopPtr), dimension (:), allocatable :: idxH
 
 
 CONTAINS
@@ -82,7 +86,8 @@ CONTAINS
 !   Allocate abstract data structure and initialize.
     allocate (idxH(nH))
     do i = 1,nH
-       idxH(i)%next => NULL()
+       allocate (idxH(i)%p)
+       idxH(i)%p%next => NULL()
     enddo
 
 
@@ -90,6 +95,52 @@ CONTAINS
 
 
 !  *******************************************************************  !
+!                               ADTinsert                               !
+!  *******************************************************************  !
+!  Description: insert an new item 'key' at the linked list             !
+!  corresponding to 'site' position.                                    !
+!                                                                       !
+!  Written by Pedro Brandimarte, Dec 2014.                              !
+!  Instituto de Fisica                                                  !
+!  Universidade de Sao Paulo                                            !
+!  e-mail: brandimarte@gmail.com                                        !
+!  ***************************** HISTORY *****************************  !
+!  Original version:    December 2014                                   !
+!  ****************************** INPUT ******************************  !
+!  integer site                : Index of the linked list (position in  !
+!                                array 'idxH')                          !
+!  integer key                 : Item to be inserted                    !
+!  *******************************************************************  !
+  subroutine ADTinsert (site, key)
+
+!   Input variables.
+    integer, intent(in) :: key, site
+
+!   Local variables.
+    TYPE(idxHop), pointer :: t, b
+
+!   Allocate the new item and assign it with 'key'.
+    allocate (t)
+    t%item = key
+
+    b => idxH(site)%p ! start from the head
+
+    do while (ASSOCIATED(b%next))
+ 
+       if (b%next%item > t%item) exit ! check for ascending order
+
+       b => b%next ! move to the next
+
+    enddo
+
+!   Insert the new 'idxHop' on the list.
+    t%next => b%next
+    b%next => t
+
+
+  end subroutine ADTinsert
+
+
 !                                ADTfree                                !
 !  *******************************************************************  !
 !  Description: free the abstract data type.                            !
@@ -113,12 +164,14 @@ CONTAINS
     TYPE(idxHop), pointer :: t
 
 !   Free the linked lists (the first element is an empty list).
+    deallocate (idxH(1)%p)
     do i = 2,nH
-       do while (ASSOCIATED(idxH(i)%next))
-          t => idxH(i)%next
-          idxH(i)%next => t%next
+       do while (ASSOCIATED(idxH(i)%p%next))
+          t => idxH(i)%p%next
+          idxH(i)%p%next => t%next
           deallocate (t)
        enddo
+       deallocate (idxH(i)%p)
     enddo
 
 !   Free the array of type 'idxHlwr'.
