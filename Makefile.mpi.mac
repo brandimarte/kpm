@@ -39,7 +39,7 @@ EXEC = kpmdev
 KPM_ARCH = x86_64-mac-openmpi-mkl
 
 # Fortran compiler.
-FC = ifort
+FC = mpif90
 FFLAGS = -O2 -xHost -openmp -traceback -fpe0 -heap-arrays 1024 \
          -check assume,bounds,format,output_conversion,pointers,stack,uninit \
          -warn unused,truncated_source,uncalled,declarations,usage
@@ -53,26 +53,31 @@ MKL_LIBS      = $(MKL)/lib/libmkl_intel_lp64.a \
 SCALAPACK_LIBS = /opt/local/lib/libscalapack.a
 MKL_INCLUDE    = -I$(MKL)/include
 
+# MPI
+MPI_LIBS     = -L/opt/local/lib -lmpi
+MPI_INCLUDE  = -I/opt/local/include
+FPPFLAGS_MPI = -DMPI
+
 #  *******************************************************************  #
 #  Do not change the following lines.                                   #
 #  *******************************************************************  #
 
 # All libraries.
-LDLIBS = $(MKL_LIBS) $(SCALAPACK_LIBS) -lpthread -lm -liomp5
+LDLIBS = $(MKL_LIBS) $(SCALAPACK_LIBS) -lpthread -lm -liomp5 $(MPI_LIBS)
 
 # All includes.
-INCFLAGS = $(MKL_INCLUDE)
+INCFLAGS = $(MKL_INCLUDE) $(MPI_INCLUDE)
 
 # Preprocessor definitions or flags.
-FPPFLAGS = 
+FPPFLAGS = $(FPPFLAGS_MPI)
 
 # Remove command.
 RM = /bin/rm -f
 
 # All source files.
-SRCS = precision.F90 io.F90 string.F90 options.F90 random.F90 init.F90  \
-	lattice.F90 hsparse.F90 hstd.F90 hadt.F90 hlm.F90 moment.F90    \
-	end.F90 kpm.F90
+SRCS = precision.F90 parallel.F90 io.F90 string.F90 options.F90         \
+	random.F90 init.F90 lattice.F90 hsparse.F90 hstd.F90 hadt.F90   \
+	hlm.F90 moment.F90 end.F90 kpm.F90
 
 # All objects.
 OBJS = $(SRCS:.F90=.o)

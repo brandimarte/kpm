@@ -32,6 +32,11 @@
 
 MODULE io
 
+!
+! Modules
+!
+  use parallel,        only: 
+
   implicit none
 
   integer :: min_lun = 10 ! minimum logical unit number
@@ -87,9 +92,20 @@ CONTAINS
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
 !  ****************************** INPUT ******************************  !
-!  integer lun             : Data file logical unit number              !
+!  integer lun                 : Data file logical unit number          !
+!  *********************** INPUT FROM MODULES ************************  !
+!  logical IOnode              : True if it is the I/O node             !
 !  *******************************************************************  !
   subroutine IOassign (lun)
+
+!
+!   Modules
+!
+    use parallel,        only: IOnode
+
+#ifdef MPI
+    include "mpif.h"
+#endif
 
 !   Input variables.
     integer, intent (out) :: lun
@@ -97,6 +113,9 @@ CONTAINS
 !   Local variables.
     integer :: iostat
     logical :: used
+#ifdef MPI
+    integer :: MPIerror
+#endif
 
     do lun = min_lun,max_lun
        if (lun_is_free(lun)) then
@@ -107,7 +126,14 @@ CONTAINS
        endif
     enddo
 
-    stop "ERROR: No luns available in io_assign"
+    if (IOnode) then
+       write (6,'(/,a,/)') "ERROR: No luns available in io_assign"
+#ifdef MPI
+       call MPI_Abort (MPI_Comm_World, 1, MPIerror)
+#else
+       stop
+#endif
+    endif
 
 
   end subroutine IOassign
@@ -125,7 +151,7 @@ CONTAINS
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
 !  ****************************** INPUT ******************************  !
-!  integer lun             : Data file logical unit number              !
+!  integer lun                 : Data file logical unit number          !
 !  *******************************************************************  !
   subroutine IOclose (lun)
 

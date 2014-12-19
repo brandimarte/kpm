@@ -36,6 +36,7 @@ MODULE options
 !   Modules
 !
   use precision,       only: dp
+  use parallel,        only: 
   use fdf
 
   implicit none
@@ -78,6 +79,8 @@ CONTAINS
 !  e-mail: brandimarte@gmail.com                                        !
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
+!  *********************** INPUT FROM MODULES ************************  !
+!  logical IOnode              : True if it is the I/O node             !
 !  ***************************** OUTPUT ******************************  !
 !  logical memory              : Use less memory?                       !
 !  integer lattOrder           : Lattice order                          !
@@ -96,88 +99,146 @@ CONTAINS
 !  *******************************************************************  !
   subroutine OPTread
 
+!
+!   Modules
+!
+    use parallel,        only: IOnode
+
+#ifdef MPI
+    include "mpif.h"
+#endif
+
 !   Local variables.
     character :: slabel_default*60
+#ifdef MPI
+    integer :: MPIerror ! Return error code in MPI routines
+#endif
 
-    write (6,'(/,28("*"),a,28("*"))') ' Simulation parameters '
+    if (IOnode) then
 
-!   Defile System Label (short name to label files).
-    slabel = ""
-    slabel_default = 'kpmsys'
-    slabel = fdf_string ('SystemLabel', slabel_default)
-    write (6,2) 'OPTread: System label                         ' //     &
-         '         =  ', slabel
+       write (6,'(/,28("*"),a,28("*"))') ' Simulation parameters '
 
-!   Lattice order (number of sites at each dimension).
-    lattOrder = fdf_integer ('LatticeOrder', 1)
-    if (lattOrder <= 0) then
-       stop 'OPTread: ERROR: Lattice order must be greater than zero!'
-    endif
-    write (6,4)                                                         &
-         'OPTread: Lattice order                                 =',    &
-         lattOrder
+!      Defile System Label (short name to label files).
+       slabel = ""
+       slabel_default = 'kpmsys'
+       slabel = fdf_string ('SystemLabel', slabel_default)
+       write (6,2) 'OPTread: System label                         ' //  &
+            '         =  ', slabel
 
-!   Degree of Chebyshev polynomial expansion.
-    polDegree = fdf_integer ('PolynomialDegree', 100)
-    if (polDegree < 3) then
-       stop 'OPTread: ERROR: polynomial degree too small!'
-    endif
-    write (6,4)                                                         &
-         'OPTread: Degree of Chebyshev polynomial expansion      =',    &
-         polDegree
-    nsteps = polDegree / 2 + 1
-    if (MOD(polDegree/2,2) == 0) then
-       dstart = (nsteps + 1) / 2 + 1
-    else
-       dstart = (nsteps + 1) / 2 + 1
-    endif
+!      Lattice order (number of sites at each dimension).
+       lattOrder = fdf_integer ('LatticeOrder', 1)
+       if (lattOrder <= 0) then
+          write (6,'(/,a,/)') 'OPTread: ERROR: Lattice order is zero!'
+#ifdef MPI
+          call MPI_Abort (MPI_Comm_World, 1, MPIerror)
+#else
+          stop
+#endif
+       endif
+       write (6,4)                                                      &
+            'OPTread: Lattice order                                 =', &
+            lattOrder
 
-!   Lower limit for Hamiltonian eigenvalues.
-    EnergyMin = fdf_physical ('EnergyMin', -10.0_dp, 'eV')
-    write (6,6)                                                         &
-         'OPTread: Lower limit for Hamiltonian eigenvalues       =',    &
-         EnergyMin, ' eV'
+!      Degree of Chebyshev polynomial expansion.
+       polDegree = fdf_integer ('PolynomialDegree', 100)
+       if (polDegree < 3) then
+          write (6,'(/,a,/)')                                           &
+               'OPTread: ERROR: polynomial degree too small!'
+#ifdef MPI
+          call MPI_Abort (MPI_Comm_World, 1, MPIerror)
+#else
+          stop
+#endif
+       endif
+       write (6,4)                                                      &
+            'OPTread: Degree of Chebyshev polynomial expansion      =', &
+            polDegree
+       nsteps = polDegree / 2 + 1
+       if (MOD(polDegree/2,2) == 0) then
+          dstart = (nsteps + 1) / 2 + 1
+       else
+          dstart = (nsteps + 1) / 2 + 1
+       endif
 
-!   Upper limit for Hamiltonian eigenvalues.
-    EnergyMax = fdf_physical ('EnergyMax', 10.0_dp, 'eV')
-    write (6,6)                                                         &
-         'OPTread: Upper limit for Hamiltonian eigenvalues       =',    &
-         EnergyMax, ' eV'
+!      Lower limit for Hamiltonian eigenvalues.
+       EnergyMin = fdf_physical ('EnergyMin', -10.0_dp, 'eV')
+       write (6,6)                                                      &
+            'OPTread: Lower limit for Hamiltonian eigenvalues       =', &
+            EnergyMin, ' eV'
 
-!   Cutoff for stability in rescaling to [-1,1].
-    delta  = fdf_double ('RescaleCutOff', 0.01_dp)
-    write(6,9)                                                          &
-         'OPTread: Cutoff for stability in rescaling to [-1,1]   =',    &
-         delta
+!      Upper limit for Hamiltonian eigenvalues.
+       EnergyMax = fdf_physical ('EnergyMax', 10.0_dp, 'eV')
+       write (6,6)                                                      &
+            'OPTread: Upper limit for Hamiltonian eigenvalues       =', &
+            EnergyMax, ' eV'
 
-!   Hopping energy between nearest neighbors.
-    thop = fdf_physical ('Hopping', 0.5_dp, 'eV')
-    write (6,6)                                                         &
-         'OPTread: Hopping energy between nearest neighbors      =',    &
-         thop, ' eV'
+!      Cutoff for stability in rescaling to [-1,1].
+       delta  = fdf_double ('RescaleCutOff', 0.01_dp)
+       write(6,9)                                                       &
+            'OPTread: Cutoff for stability in rescaling to [-1,1]   =', &
+            delta
 
-!   On-site disorder broadening.
-    dW = fdf_physical ('DisorderBroad', 2.0_dp, 'eV')
-    write (6,6)                                                         &
-         'OPTread: On-site disorder broadening                   =',    &
-         dW, ' eV'
+!      Hopping energy between nearest neighbors.
+       thop = fdf_physical ('Hopping', 0.5_dp, 'eV')
+       write (6,6)                                                      &
+            'OPTread: Hopping energy between nearest neighbors      =', &
+            thop, ' eV'
 
-!   Number of threads for parallel (multi-threaded) MKL subroutines.
-    NumThreads = fdf_integer ('NumThreads', 1)
-    if (NumThreads <= 0) then
-       stop 'OPTread: ERROR: NumThreads order must be greater than zero!'
-    endif
-    write (6,4)                                                         &
-         'OPTread: Number of threads for parallel MKL            =',    &
-         NumThreads
+!      On-site disorder broadening.
+       dW = fdf_physical ('DisorderBroad', 2.0_dp, 'eV')
+       write (6,6)                                                      &
+            'OPTread: On-site disorder broadening                   =', &
+            dW, ' eV'
 
-!   Use less memory?
-    memory = fdf_boolean ('LessMemory', .true.)
-    write (6,1)                                                         &
-         'OPTread: Use less memory?                              =',    &
-         memory
+!      Number of threads for parallel (multi-threaded) MKL subroutines.
+       NumThreads = fdf_integer ('NumThreads', 1)
+       if (NumThreads <= 0) then
+          write (6,'(/,a,/)')                                           &
+            'OPTread: ERROR: NumThreads order must be greater than zero!'
+#ifdef MPI
+          call MPI_Abort (MPI_Comm_World, 1, MPIerror)
+#else
+          stop
+#endif
+       endif
+       write (6,4)                                                      &
+            'OPTread: Number of threads for parallel MKL            =', &
+            NumThreads
 
-    write (6,'(2a)') 'OPTread: ', repeat('*', 70)
+!      Use less memory?
+       memory = fdf_boolean ('LessMemory', .true.)
+       write (6,1)                                                      &
+            'OPTread: Use less memory?                              =', &
+            memory
+
+       write (6,'(2a)') 'OPTread: ', repeat('*', 70)
+
+    endif ! if (IOnode)
+
+#ifdef MPI
+    call MPI_Bcast (slabel, label_len, MPI_Character, 0,                &
+                    MPI_Comm_World, MPIerror)
+    call MPI_Bcast (lattOrder, 1, MPI_Integer, 0,                       &
+                    MPI_Comm_World, MPIerror)
+    call MPI_Bcast (polDegree, 1, MPI_Integer, 0,                       &
+                    MPI_Comm_World, MPIerror)
+    call MPI_Bcast (nsteps, 1, MPI_Integer, 0, MPI_Comm_World, MPIerror)
+    call MPI_Bcast (dstart, 1, MPI_Integer, 0, MPI_Comm_World, MPIerror)
+    call MPI_Bcast (EnergyMin, 1, MPI_Double_Precision, 0,              &
+                    MPI_Comm_World, MPIerror)
+    call MPI_Bcast (EnergyMax, 1, MPI_Double_Precision, 0,              &
+                    MPI_Comm_World, MPIerror)
+    call MPI_Bcast (delta, 1, MPI_Double_Precision, 0,                  &
+                    MPI_Comm_World, MPIerror)
+    call MPI_Bcast (thop, 1, MPI_Double_Precision, 0,                   &
+                    MPI_Comm_World, MPIerror)
+    call MPI_Bcast (dW, 1, MPI_Double_Precision, 0,                     &
+                    MPI_Comm_World, MPIerror)
+    call MPI_Bcast (NumThreads, 1, MPI_Integer, 0,                      &
+                    MPI_Comm_World, MPIerror)
+    call MPI_Bcast (memory, 1, MPI_Logical, 0,                          &
+                    MPI_Comm_World, MPIerror)
+#endif
 
 1   format(a,6x,l1)
 2   format(a,a)

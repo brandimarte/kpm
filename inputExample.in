@@ -1,5 +1,5 @@
 SystemLabel          teste
-LatticeOrder         1000
+LatticeOrder         4
 PolynomialDegree     100
 Hopping             -0.2 eV
 DisorderBroad        1.5 eV

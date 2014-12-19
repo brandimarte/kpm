@@ -18,10 +18,9 @@
 !  distributed along with this program or at                            !
 !  <http://www.gnu.org/licenses/gpl.html>).                             !
 !  *******************************************************************  !
-!                              PROGRAM KPM                              !
+!                            MODULE parallel                            !
 !  *******************************************************************  !
-!  Description: electron transport in disordered systems with           !
-!  electron-phonon interaction.                                         !
+!  Description: set/store parallel variables.                           !
 !                                                                       !
 !  Written by Pedro Brandimarte, Dec 2014.                              !
 !  Instituto de Fisica                                                  !
@@ -29,62 +28,24 @@
 !  e-mail: brandimarte@gmail.com                                        !
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
-!  *********************** INPUT FROM MODULES ************************  !
-!  logical IOnode              : True if it is the I/O node             !
-!  integer lattOrder           : Lattice order                          !
-!                                (# of sites at each dimension)         !
-!  logical memory              : Use less memory?                       !
 !  *******************************************************************  !
 
-PROGRAM KPM
+MODULE parallel
 
-!
-! Modules
-!
-  use parallel,        only: IOnode
-  use init,            only: initialize
-  use end,             only: finalize
-  use hstd,            only: HSTDbuild
-  use hlm,             only: HLMbuild
-  use moment,          only: Minit, MomentsH2
-  use options,         only: lattOrder, memory
-  use hsparse,         only: Hrescale
 
   implicit none
 
-! Local variables.
-  integer :: i
+  PUBLIC ! default is public
 
-! Proper initialization and reading of input options.
-  call initialize
+  integer, save :: Node = 0 ! Actual node (rank)
 
-  if (IOnode) write (6,'(/,31("*"),a,31("*"),/)') ' KPM Calculation '
+  integer, save :: Nodes = 1 ! Total number of nodes (comm_size)
 
-! Build system sparse Hamiltonian.
-  if (memory) then
-     call HLMbuild ! use less memory
-  else
-     call HSTDbuild ! standard method
-  endif
-
-! Rescale the Hamiltonian.
-  call Hrescale
-
-! Initialize moment array.
-  call Minit
-
-  do i = 1,lattOrder
-
-!    Compute the moments.
-     call MomentsH2 (i)
-
-  enddo
-
-! Proper ending.
-  call finalize
+  logical, save :: IOnode = .false. ! True if it is the I/O node
 
 
 !  *******************************************************************  !
 
 
-END PROGRAM KPM
+END MODULE parallel
+
