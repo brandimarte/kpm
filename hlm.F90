@@ -54,15 +54,17 @@ MODULE hlm
 !
 ! Modules
 !
+  use precision,       only: dp
   use options,         only: 
   use hsparse,         only: 
   use hadt,            only: 
   use lattice,         only: 
+  use random,          only: 
 
   implicit none
 
   PUBLIC  :: HLMbuild
-  PRIVATE :: HLMhopping
+  PRIVATE :: HLMhopping, HLMenergy, HLMsparseCSR
 
 
 CONTAINS
@@ -104,6 +106,9 @@ CONTAINS
 
 !   Assing the non-diagonal indexes to the ADT.
     call HLMhopping
+
+!   Build the TB Hamiltonian in CSR sparse format.
+    call HLMsparseCSR
 
 !   Free memory.
     call ADTfree (nH)
@@ -169,6 +174,146 @@ CONTAINS
 
 
   end subroutine HLMhopping
+
+
+!  *******************************************************************  !
+!                               HLMenergy                               !
+!  *******************************************************************  !
+!  Description: Return an on-site energy chosen from a uniform          !
+!  probability distribution 'theta' as follows:                         !
+!                                                                       !
+!                     HLMenergy = (theta - 0.5) * W                     !
+!                                                                       !
+!  where 'W' is the disorder broadening.                                !
+!                                                                       !
+!  Written by Pedro Brandimarte, Dec 2014.                              !
+!  Instituto de Fisica                                                  !
+!  Universidade de Sao Paulo                                            !
+!  e-mail: brandimarte@gmail.com                                        !
+!  ***************************** HISTORY *****************************  !
+!  Original version:    December 2014                                   !
+!  *********************** INPUT FROM MODULES ************************  !
+!  real*8 dW                   : On-site disorder broadening            !
+!  *******************************************************************  !
+  function HLMenergy
+
+!
+! Modules
+!
+    use options,         only: dW
+    use random,          only: genrand
+
+!   Function type declaration.
+    real(dp) :: HLMenergy
+
+!   Local variables.
+    real(dp) :: theta
+
+!   Pseudorandom number in [0,1].
+    theta = genrand ()
+
+!   Assign on-site energy.
+    HLMenergy = (theta - 0.5_dp) * dW
+
+
+  end function HLMenergy
+
+
+!  *******************************************************************  !
+!                             HLMsparseCSR                              !
+!  *******************************************************************  !
+!  Description: Assign the tight-binding Hamiltonian in CSR sparse      !
+!  format from the indexes in the abstract data structure 'idxH'.       !
+!                                                                       !
+!  Written by Pedro Brandimarte, Dec 2014.                              !
+!  Instituto de Fisica                                                  !
+!  Universidade de Sao Paulo                                            !
+!  e-mail: brandimarte@gmail.com                                        !
+!  ***************************** HISTORY *****************************  !
+!  Original version:    December 2014                                   !
+!  *********************** INPUT FROM MODULES ************************  !
+!  TYPE(idxHopPtr) idxH        : Lower triangular Hopping indexes       !
+!  integer nH                  : Array size (order of Hamiltonian)      !
+!  real*8 thop                 : Hopping energy between 1st neighbors   !
+!  ************************ OUTPUT TO MODULES ************************  !
+!  integer nElem               : Number of non-zero elements            !
+!  real*8 Hval(nElem)          : Non-zero elements                      !
+!  integer Hcol(nElem)         : 'Hval' column indexes                  !
+!  integer Hrow(nH+1)          : 'Hval' index of first non-zero j-row   !
+!  *******************************************************************  !
+  subroutine HLMsparseCSR
+
+!
+! Modules
+!
+    use hadt,            only: idxHop, idxH
+    use options,         only: thop
+    use hsparse,         only: nH, nElem, Hval, Hcol, Hrow
+
+!   Local variables.
+    integer :: i, el
+    TYPE(idxHop), pointer :: t
+
+    write (6,'(a,/)') 'Building Hamiltonian in CSR sparse format'
+
+!   Number of non-zero elements (first neighbors interaction).
+    nElem = 2 * nH + nH
+    write (6,'(a,i,/)') '   number of non-zero elements = ', nElem
+
+!   Allocate 'Hval', 'Hcol' and 'Hrow' from CSR format.
+    allocate (Hval(nElem))
+    allocate (Hcol(nElem))
+    allocate (Hrow(nH+1))
+
+!   First element.
+    Hval(1) = HLMenergy ()
+    Hcol(1) = 1
+    Hrow(1) = 1
+    el = 1 ! nElem counter
+
+    do i = 2,nH ! over the sites
+
+       t => idxH(i)%p ! start from the head
+
+!      Check the kind of first element in a row (hopping or site energy),
+!      just to be more general (we don't lose efficiency with this).
+       if (ASSOCIATED(t%next)) then
+
+          el = el + 1
+          t => t%next
+          Hval(el) = -thop
+          Hcol(el) = t%item
+          Hrow(i) = el
+
+          do while (ASSOCIATED(t%next)) ! sweep the linked list
+
+             el = el + 1
+             t => t%next
+             Hval(el) = -thop
+             Hcol(el) = t%item
+
+          enddo
+
+!         Last element is the site energy.
+          el = el + 1
+          Hval(el) = HLMenergy ()
+          Hcol(el) = i
+
+       else ! there is no hopping energy in the row
+
+          el = el + 1
+          Hval(el) = HLMenergy ()
+          Hcol(el) = i
+          Hrow(i) = el
+          
+       endif
+
+    enddo ! do i = 2,nH
+
+    Hrow(nH+1) = nElem + 1
+
+
+  end subroutine HLMsparseCSR
 
 
 !  *******************************************************************  !

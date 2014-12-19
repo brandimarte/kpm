@@ -62,7 +62,7 @@ MODULE hstd
   implicit none
 
   PUBLIC  :: HSTDbuild
-  PRIVATE :: HSTDdense, HSTDenergies, HSTDhopping, HSTDrescale,         &
+  PRIVATE :: HSTDdense, HSTDenergies, HSTDhopping,                      &
              HSTDdense2sparse, HSTDsparse2dense
 
 
@@ -111,9 +111,6 @@ CONTAINS
 
 !   Generate the full Hamiltonian in dense representation.
     call HSTDdense (nH, Htot)
-
-!   Rescale the Hamiltonian.
-    call HSTDrescale (nH, Htot)
 
 !   Convert to CSR format.
     call HSTDdense2sparse (Htot, nTot)
@@ -274,51 +271,6 @@ CONTAINS
 
 
 !  *******************************************************************  !
-!                              HSTDrescale                              !
-!  *******************************************************************  !
-!  Description: Rescale the full tight-binding Hamiltonian in order to  !
-!  fit its spectrum into the interval [-1,1].                           !
-!                                                                       !
-!  Written by Pedro Brandimarte, Dec 2014.                              !
-!  Instituto de Fisica                                                  !
-!  Universidade de Sao Paulo                                            !
-!  e-mail: brandimarte@gmail.com                                        !
-!  ***************************** HISTORY *****************************  !
-!  Original version:    December 2014                                   !
-!  ****************************** INPUT ******************************  !
-!  integer nH                  : Array size (order of Hamiltonian)      !
-!  real*8 Htot(nH,nH)          : Hamiltonian in dense format            !
-!  *********************** INPUT FROM MODULES ************************  !
-!  real*8 EnergyMin            : Lower limit for eigenvalues            !
-!  real*8 EnergyMax            : Upper limit for eigenvalues            !
-!  real*8 delta                : Cutoff for stability in rescaling      !
-!  *******************************************************************  !
-  subroutine HSTDrescale (nH, Htot)
-
-!
-! Modules
-!
-    use options,         only: EnergyMin, EnergyMax, delta
-
-!   Input variables.
-    integer, intent(in) :: nH
-    real(dp), intent(inout) :: Htot(nH,nH)
-
-!   Local variables.
-    real(dp) :: alpha, beta
-
-!   Assign the scaling factors.
-    alpha = (EnergyMax - EnergyMin) / (2.0_dp - delta)
-    beta = (EnergyMax + EnergyMin) / 2.0_dp
-
-!   Rescale the Hamiltonian.
-    Htot = (Htot - beta) / alpha
-
-
-  end subroutine HSTDrescale
-
-
-!  *******************************************************************  !
 !                           HSTDdense2sparse                            !
 !  *******************************************************************  !
 !  Description: convert 'Htot' sparse matrix in dense representation    !
@@ -335,6 +287,7 @@ CONTAINS
 !  real*8 nTot                 : Number of triangular elements          !
 !  *********************** INPUT FROM MODULES ************************  !
 !  integer nH                  : Array size (order of Hamiltonian)      !
+!  ************************ OUTPUT TO MODULES ************************  !
 !  integer nElem               : Number of non-zero elements            !
 !  real*8 Hval(nElem)          : Non-zero elements                      !
 !  integer Hcol(nElem)         : 'Hval' column indexes                  !
@@ -349,7 +302,8 @@ CONTAINS
 
 !   Input variables.
     integer, intent(in) :: nTot
-    real(dp), intent(in) :: Htot(nH,nH)
+!!$    real(dp), intent(in) :: Htot(nH,nH)
+    real(dp), intent(inout) :: Htot(nH,nH)
 
 !   Local variables.
     integer :: info

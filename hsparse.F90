@@ -51,10 +51,11 @@ MODULE hsparse
 ! Modules
 !
   use precision,       only: dp
+  use options,         only: 
 
   implicit none
 
-  PUBLIC  :: Hfree, nH, nElem, Hval, Hcol, Hrow
+  PUBLIC  :: Hrescale, Hfree, nH, nElem, Hval, Hcol, Hrow
   PRIVATE ! default is private
 
   integer :: nH ! order of Hamiltonian matrix
@@ -68,6 +69,45 @@ MODULE hsparse
 
 
 CONTAINS
+
+
+!  *******************************************************************  !
+!                               Hrescale                                !
+!  *******************************************************************  !
+!  Description: Rescale the full tight-binding Hamiltonian in order to  !
+!  fit its spectrum into the interval [-1,1].                           !
+!                                                                       !
+!  Written by Pedro Brandimarte, Dec 2014.                              !
+!  Instituto de Fisica                                                  !
+!  Universidade de Sao Paulo                                            !
+!  e-mail: brandimarte@gmail.com                                        !
+!  ***************************** HISTORY *****************************  !
+!  Original version:    December 2014                                   !
+!  *********************** INPUT FROM MODULES ************************  !
+!  real*8 EnergyMin            : Lower limit for eigenvalues            !
+!  real*8 EnergyMax            : Upper limit for eigenvalues            !
+!  real*8 delta                : Cutoff for stability in rescaling      !
+!  real*8 Hval(nElem)          : Non-zero elements                      !
+!  *******************************************************************  !
+  subroutine Hrescale
+
+!
+! Modules
+!
+    use options,         only: EnergyMin, EnergyMax, delta
+
+!   Local variables.
+    real(dp) :: alpha, beta
+
+!   Assign the scaling factors.
+    alpha = (EnergyMax - EnergyMin) / (2.0_dp - delta)
+    beta = (EnergyMax + EnergyMin) / 2.0_dp
+
+!   Rescale the Hamiltonian.
+    Hval = (Hval - beta) / alpha
+
+
+  end subroutine Hrescale
 
 
 !  *******************************************************************  !

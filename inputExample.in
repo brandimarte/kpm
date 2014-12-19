@@ -1,11 +1,11 @@
 SystemLabel          teste
-LatticeOrder         4
-PolynomialDegree     800
+LatticeOrder         1000
+PolynomialDegree     100
 Hopping             -0.2 eV
 DisorderBroad        1.5 eV
 EnergyMin           -5.0 eV
 EnergyMax            5.0 eV
 RescaleCutOff        0.01
-NumThreads           4
+NumThreads           1
 LessMemory           T
 

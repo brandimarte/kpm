@@ -172,7 +172,7 @@ CONTAINS
          NumThreads
 
 !   Use less memory?
-    memory = fdf_boolean ('LessMemory', .false.)
+    memory = fdf_boolean ('LessMemory', .true.)
     write (6,1)                                                         &
          'OPTread: Use less memory?                              =',    &
          memory
