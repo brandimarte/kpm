@@ -55,7 +55,7 @@ MODULE hsparse
 
   implicit none
 
-  PUBLIC  :: Hrescale, Hfree, nH, nElem, Hval, Hcol, Hrow
+  PUBLIC  :: Hrescale, Hfree, Hbcast, nH, nElem, Hval, Hcol, Hrow
   PRIVATE ! default is private
 
   integer :: nH ! order of Hamiltonian matrix
@@ -131,6 +131,54 @@ CONTAINS
 
 
   end subroutine Hfree
+
+
+!  *******************************************************************  !
+!                                Hbcast                                 !
+!  *******************************************************************  !
+!  Description: broadcast sparse tight-binding Hamiltonian matrix       !
+!  (only called in MPI parallel calculation).                           !
+!                                                                       !
+!  Written by Pedro Brandimarte, Dec 2014.                              !
+!  Instituto de Fisica                                                  !
+!  Universidade de Sao Paulo                                            !
+!  e-mail: brandimarte@gmail.com                                        !
+!  ***************************** HISTORY *****************************  !
+!  Original version:    December 2014                                   !
+!  *******************************************************************  !
+  subroutine Hbcast
+
+!
+! Modules
+!
+    use parallel,        only: IOnode
+
+#ifdef MPI
+    include "mpif.h"
+
+!   Local variables.
+    integer :: MPIerror ! Return error code in MPI routines
+
+!   Broadcast the number of non-zero elements.
+    call MPI_Bcast (nElem, 1, MPI_Integer, 0, MPI_Comm_World, MPIerror)
+
+!   Allocates CSR sparse matrix for further nodes.
+    if (.not. IOnode) then
+       allocate (Hval(nElem))
+       allocate (Hcol(nElem))
+       allocate (Hrow(nH+1))
+    endif
+
+!   Brodcast the CSR sparse matrix.
+    call MPI_Bcast (Hval, nElem, MPI_Double_Precision, 0,               &
+                    MPI_Comm_World, MPIerror)
+    call MPI_Bcast (Hcol, nElem, MPI_Integer, 0,                        &
+                    MPI_Comm_World, MPIerror)
+    call MPI_Bcast (Hrow, nH+1, MPI_Integer, 0, MPI_Comm_World, MPIerror)
+#endif
+
+
+  end subroutine Hbcast
 
 
 !  *******************************************************************  !

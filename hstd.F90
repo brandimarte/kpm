@@ -54,6 +54,7 @@ MODULE hstd
 ! Modules
 !
   use precision,       only: dp
+  use parallel,        only: 
   use options,         only: 
   use hsparse,         only: 
   use random,          only: 
@@ -84,6 +85,7 @@ CONTAINS
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
 !  *********************** INPUT FROM MODULES ************************  !
+!  logical IOnode              : True if it is the I/O node             !
 !  integer lattOrder           : Lattice order                          !
 !                                (# of sites at each dimension)         !
 !  integer nH                  : Array size (order of Hamiltonian)      !
@@ -93,8 +95,13 @@ CONTAINS
 !
 ! Modules
 !
+    use parallel,        only: IOnode
     use options,         only: lattOrder
+#ifdef MPI
+    use hsparse,         only: nH, Hbcast
+#else
     use hsparse,         only: nH
+#endif
 
 !   Local variables.
     integer :: nTot
@@ -103,20 +110,28 @@ CONTAINS
 !   Order of the full tight-binding Hamiltonian.
     nH = lattOrder*lattOrder
 
-!   Full Hamiltonian matrix (dense representation).
-    allocate (Htot(nH,nH))
+    if (IOnode) then
 
-!   Size of triangular elements.
-    nTot = (nH*nH - nH) / 2 + nH
+!      Full Hamiltonian matrix (dense representation).
+       allocate (Htot(nH,nH))
 
-!   Generate the full Hamiltonian in dense representation.
-    call HSTDdense (nH, Htot)
+!      Size of triangular elements.
+       nTot = (nH*nH - nH) / 2 + nH
 
-!   Convert to CSR format.
-    call HSTDdense2sparse (Htot, nTot)
+!      Generate the full Hamiltonian in dense representation.
+       call HSTDdense (nH, Htot)
 
-!   Free memory.
-    deallocate (Htot)
+!      Convert to CSR format.
+       call HSTDdense2sparse (Htot, nTot)
+
+!      Free memory.
+       deallocate (Htot)
+
+    endif
+
+#ifdef MPI
+    call Hbcast
+#endif
 
 
   end subroutine HSTDbuild

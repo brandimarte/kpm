@@ -55,11 +55,12 @@ MODULE hlm
 ! Modules
 !
   use precision,       only: dp
+  use parallel,        only: 
   use options,         only: 
   use hsparse,         only: 
   use hadt,            only: 
-  use lattice,         only: 
   use random,          only: 
+  use lattice,         only: 
 
   implicit none
 
@@ -85,6 +86,7 @@ CONTAINS
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
 !  *********************** INPUT FROM MODULES ************************  !
+!  logical IOnode              : True if it is the I/O node             !
 !  integer lattOrder           : Lattice order                          !
 !                                (# of sites at each dimension)         !
 !  integer nH                  : Array size (order of Hamiltonian)      !
@@ -94,24 +96,37 @@ CONTAINS
 !
 ! Modules
 !
+    use parallel,        only: IOnode
     use options,         only: lattOrder
+#ifdef MPI
+    use hsparse,         only: nH, Hbcast
+#else
     use hsparse,         only: nH
+#endif
     use hadt,            only: ADTcreate, ADTfree
 
 !   Order of the full tight-binding Hamiltonian.
     nH = lattOrder*lattOrder
 
-!   Create the abstract data structure (ADT).
-    call ADTcreate (nH)
+    if (IOnode) then
 
-!   Assing the non-diagonal indexes to the ADT.
-    call HLMhopping
+!      Create the abstract data structure (ADT).
+       call ADTcreate (nH)
 
-!   Build the TB Hamiltonian in CSR sparse format.
-    call HLMsparseCSR
+!      Assing the non-diagonal indexes to the ADT.
+       call HLMhopping
 
-!   Free memory.
-    call ADTfree (nH)
+!      Build the TB Hamiltonian in CSR sparse format.
+       call HLMsparseCSR
+
+!      Free memory.
+       call ADTfree (nH)
+
+    endif
+
+#ifdef MPI
+    call Hbcast
+#endif
 
 
   end subroutine HLMbuild
