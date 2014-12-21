@@ -36,20 +36,20 @@
 EXEC = kpmdev
 
 # Compilation architecture.
-KPM_ARCH = x86_64-mac-ifort-mkl
+KPM_ARCH = x86_64-unknown-linux-ifort-mkl
 
 # Fortran compiler.
 FC = ifort
-FFLAGS = -O2 -xHost -openmp -traceback -fpe0 -heap-arrays 1024 \
+FFLAGS = -O2 -xHost -openmp -traceback -fpe0 \
          -check assume,bounds,format,output_conversion,pointers,stack,uninit \
          -warn unused,truncated_source,uncalled,declarations,usage
 LDFLAGS = -static-intel
 
 # BLAS and LAPACK with MKL.
 MKL           = /opt/intel/composerxe/mkl
-MKL_LIBS      = $(MKL)/lib/libmkl_intel_lp64.a \
-	        $(MKL)/lib/libmkl_intel_thread.a \
-	        $(MKL)/lib/libmkl_core.a
+MKL_LIBS      = $(MKL)/lib/intel64/libmkl_intel_lp64.a \
+	        $(MKL)/lib/intel64/libmkl_intel_thread.a \
+	        $(MKL)/lib/intel64/libmkl_core.a
 MKL_INCLUDE    = -I$(MKL)/include
 
 #  *******************************************************************  #
@@ -57,7 +57,7 @@ MKL_INCLUDE    = -I$(MKL)/include
 #  *******************************************************************  #
 
 # All libraries.
-LDLIBS = $(MKL_LIBS) -lpthread -lm -liomp5
+LDLIBS = -Wl,--start-group $(MKL_LIBS) -Wl,--end-group -lpthread -lm -liomp5
 
 # All includes.
 INCFLAGS = $(MKL_INCLUDE)

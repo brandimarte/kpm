@@ -77,7 +77,11 @@ CONTAINS
 !
 ! Modules
 !
+#ifdef MPI
     use parallel,        only: Node, Nodes, IOnode
+#else
+    use parallel,        only: Node, IOnode
+#endif
     use io,              only: IOinit
     use options,         only: OPTread, NumThreads
     use lattice,         only: LATTdistrib
@@ -88,7 +92,6 @@ CONTAINS
 !   Local variables.
     integer :: MPIerror ! Return error code in MPI routines
 #endif
-
 
 !   Initialise MPI and set processor number.
 #ifdef MPI

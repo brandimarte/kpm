@@ -145,15 +145,17 @@ CONTAINS
 !  e-mail: brandimarte@gmail.com                                        !
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
+!  *********************** INPUT FROM MODULES ************************  !
+!  logical IOnode              : True if it is the I/O node             !
 !  *******************************************************************  !
   subroutine Hbcast
 
 !
 ! Modules
 !
+#ifdef MPI
     use parallel,        only: IOnode
 
-#ifdef MPI
     include "mpif.h"
 
 !   Local variables.

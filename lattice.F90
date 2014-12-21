@@ -202,11 +202,14 @@ CONTAINS
     use options,         only: lattOrder
 
 !   Input variables.
-    integer :: remainder
+    integer :: nH, remainder
 
-    if (lattOrder < Nodes) then ! don't use all nodes
+!   Number of square lattice states.
+    nH = lattOrder * lattOrder
 
-       if (Node+1 <= lattOrder) then
+    if (nH < Nodes) then ! don't use all nodes
+
+       if (Node+1 <= nH) then
           nLsite = 1
           siteStart = Node + 1
           siteEnd = siteStart + nLsite - 1
@@ -218,15 +221,15 @@ CONTAINS
 
     else ! use all nodes
 
-       remainder = MOD(lattOrder,Nodes)
+       remainder = MOD(nH,Nodes)
 
 !      The first 'remainder' nodes have one more site.
        if (Node+1 <= remainder) then
-          nLsite = lattOrder / Nodes +1
+          nLsite = nH / Nodes + 1
           siteStart = Node * nLsite + 1
           siteEnd = siteStart + nLsite - 1
        else
-          nLsite = lattOrder / Nodes
+          nLsite = nH / Nodes
           siteStart = remainder * (nLsite + 1)                          &
                + (Node - remainder) * nLsite + 1
           siteEnd = siteStart + nLsite - 1

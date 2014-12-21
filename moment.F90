@@ -37,6 +37,7 @@ MODULE moment
 ! Modules
 !
   use precision,       only: dp
+  use parallel,        only:
   use options,         only: 
   use hsparse,         only: 
   use string,          only: 
@@ -45,9 +46,10 @@ MODULE moment
   implicit none
 
   PUBLIC  :: Minit, Mcalc, Mfree, muH
-  PRIVATE :: MomentsH, MomentsH2
+  PRIVATE :: Mgather, MomentsH, MomentsH2
 
-  real(dp), allocatable, dimension (:) :: muH ! moments
+  real(dp), allocatable, dimension (:,:) :: lmu ! moments (local to node)
+  real(dp), allocatable, dimension (:,:) :: muH ! moments (all nodes)
 
 
 CONTAINS
@@ -66,6 +68,7 @@ CONTAINS
 !  Original version:    December 2014                                   !
 !  *********************** INPUT FROM MODULES ************************  !
 !  integer polDegree           : Degree of polynomial expansion         !
+!  integer nLsite              : Number of sites (local to node)        !
 !  *******************************************************************  !
   subroutine Minit
 
@@ -73,10 +76,10 @@ CONTAINS
 ! Modules
 !
     use options,         only: polDegree
+    use lattice,         only: nLsite
 
-!   Allocatte moments array.
-    allocate (muH(polDegree))
-    muH(1) = 1.0_dp
+!   Allocatte moments array (local to node).
+    allocate (lmu(polDegree,nLsite))
 
 
   end subroutine Minit
@@ -86,7 +89,7 @@ CONTAINS
 !                                 Mcalc                                 !
 !  *******************************************************************  !
 !  Description: interface for calling subroutine to compute the         !
-!  moments in parallel and reducing to all nodes.                       !
+!  moments.                                                             !
 !                                                                       !
 !  Written by Pedro Brandimarte, Dec 2014.                              !
 !  Instituto de Fisica                                                  !
@@ -95,6 +98,7 @@ CONTAINS
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
 !  *********************** INPUT FROM MODULES ************************  !
+!  logical IOnode              : True if it is the I/O node             !
 !  integer siteStart           : First site index (local to node)       !
 !  integer siteEnd             : Last site index (local to node)        !
 !  *******************************************************************  !
@@ -103,10 +107,13 @@ CONTAINS
 !
 ! Modules
 !
+    use parallel,        only: IOnode
     use lattice,         only: siteStart, siteEnd
 
 !   Local variables.
     integer :: i
+
+    if (IOnode) write (6,'(a,i5,/)') 'Computing the moments'
 
     do i = siteStart,siteEnd
 
@@ -115,11 +122,122 @@ CONTAINS
 
     enddo
 
-#ifdef MPI
-#endif
+!   Gather moments from all nodes.
+    call Mgather
 
 
   end subroutine Mcalc
+
+
+!  *******************************************************************  !
+!                                Mgather                                !
+!  *******************************************************************  !
+!  Description: gather computed moments from all nodes.                 !
+!                                                                       !
+!  OBS.: another option here could have been allocating the full 'muH'  !
+!  in all nodes and then call a MPI_Allgatherv. If we realize that all  !
+!  nodes will need the moments, then we can make this change.           !
+!                                                                       !
+!  Written by Pedro Brandimarte, Dec 2014.                              !
+!  Instituto de Fisica                                                  !
+!  Universidade de Sao Paulo                                            !
+!  e-mail: brandimarte@gmail.com                                        !
+!  ***************************** HISTORY *****************************  !
+!  Original version:    December 2014                                   !
+!  *********************** INPUT FROM MODULES ************************  !
+!  integer Node                : Actual node (rank)                     !
+!  integer Nodes               : Total number of nodes (comm_size)      !
+!  integer polDegree           : Degree of polynomial expansion         !
+!  integer nH                  : Order of 'Htot' matrix                 !
+!  integer nLsite              : Number of sites (local to node)        !
+!  *******************************************************************  !
+  subroutine Mgather
+
+!
+! Modules
+!
+#ifdef MPI
+    use parallel,        only: Node, Nodes
+#else
+    use parallel,        only: Node
+#endif
+    use options,         only: polDegree
+    use hsparse,         only: nH
+    use lattice,         only: nLsite
+
+#ifdef MPI
+    include "mpif.h"
+
+!   Local variables.
+    integer :: i, remainder, nsites, sinit
+    integer :: MPIerror ! Return error code in MPI routines
+    integer, dimension(MPI_Status_Size) :: MPIstatus
+#endif
+
+    if (Node == 0) then
+
+!      Allocatte full moments array.
+       allocate (muH(polDegree,nH))
+
+!      Copy its own part.
+       muH(:,1:nLsite) = lmu
+
+    endif
+
+!   Gather from other nodes.
+#ifdef MPI
+    if (nH < Nodes) then ! don't use all nodes
+
+       do i = 2,nH
+
+!         Send 'lmu' to node 0.
+          if (Node == i-1) then
+             call MPI_Send (lmu, polDegree, MPI_Double_Precision,       &
+                            0, 1, MPI_Comm_World, MPIerror)
+          elseif (Node == 0) then
+             call MPI_Recv (muH(1,i), polDegree, MPI_Double_Precision,  &
+                            i-1, 1, MPI_Comm_World, MPIstatus, MPIerror)
+          endif
+
+       enddo
+
+    else ! use all nodes
+
+       remainder = MOD(nH,Nodes)
+
+       do i = 2,Nodes
+
+!         Set number of sites and first site index from node 'i-1'.
+          if (i <= remainder) then
+             nsites = nH / Nodes + 1
+             sinit = (i - 1) * nsites + 1
+          else
+             nsites = nH / Nodes
+             sinit  = remainder * (nsites + 1)                          &
+                  + (i - 1 - remainder) * nsites + 1
+          endif
+
+!         Send 'lmu' to node 0.
+          if (Node == i-1) then
+             call MPI_Send (lmu, nsites*polDegree,                      &
+                            MPI_Double_Precision, 0, 1,                 &
+                            MPI_Comm_World, MPIerror)
+          elseif (Node == 0) then
+             call MPI_Recv (muH(1,sinit), nsites*polDegree,             &
+                            MPI_Double_Precision, i-1, 1,               &
+                            MPI_Comm_World, MPIstatus, MPIerror)
+          endif
+
+       enddo
+
+    endif ! if (nH < Nodes)
+#endif
+
+!   Free local moments.
+    deallocate (lmu)
+
+
+  end subroutine Mgather
 
 
 !  *******************************************************************  !
@@ -138,11 +256,12 @@ CONTAINS
 !  integer state               : Hamiltonian state index                !
 !  *********************** INPUT FROM MODULES ************************  !
 !  integer polDegree           : Degree of polynomial expansion         !
-!  real*8 nH                   : Order of 'Htot' matrix                 !
+!  integer nH                  : Order of 'Htot' matrix                 !
 !  real*8 Hval(nElem)          : Non-zero elements from Hamiltonian     !
 !  real*8 Hcol(nElem)          : 'Hval' column indexes                  !
 !  real*8 Hrow(nH+1)           : 'Hval' index of first non-zero         !
 !                                element in row j                       !
+!  integer siteStart           : First site index (local to node)       !
 !  *******************************************************************  !
   subroutine MomentsH (state)
 
@@ -152,16 +271,17 @@ CONTAINS
     use options,         only: polDegree
     use hsparse,         only: nH, Hval, Hcol, Hrow
     use string,          only: STRconcat
+#ifdef MPI
+    use lattice,         only: siteStart
+#endif
 
 !   Input variables.
     integer, intent(in) :: state
 
 !   Local variables.
-    integer :: i
+    integer :: i, lstate
     real(dp), allocatable, dimension (:) :: alpha0, alpha1, alpha2
     character(len=6) :: matdescra ! why 6? who knows...
-
-    write (6,'(a,i5,/)') 'Computing the moments for state ', state
 
 !   Allocate states and moment arrays.
     allocate (alpha0(nH))
@@ -174,14 +294,22 @@ CONTAINS
     call STRconcat (matdescra, 'N', matdescra) ! non-unit diagonal
     call STRconcat (matdescra, 'F', matdescra) ! one-based indexing
 
+!   Local state index.
+#ifdef MPI
+    lstate = state - siteStart + 1
+#else
+    lstate = state
+#endif
+
 !   First step.
     alpha0 = 0.0_dp
     alpha0(state) = 1.0_dp
+    lmu(1,lstate) = 1.0_dp
     call mkl_dcsrmv ('N', nH, nH, 1.0_dp, matdescra, Hval, Hcol,        &
                      Hrow, Hrow(2), alpha0, 0.0_dp, alpha1)
 
 !   Assign the moment.
-    muH(2) = alpha1(state)
+    lmu(2,lstate) = alpha1(state)
 
     do i = 3,polDegree
 
@@ -190,7 +318,7 @@ CONTAINS
                         Hrow, Hrow(2), alpha1, -1.0_dp, alpha0)
 
 !      Assign the moment.
-       muH(i) = alpha0(state)
+       lmu(i,lstate) = alpha0(state)
 
 !      Update recursive arrays.
        alpha2 = alpha0
@@ -233,11 +361,12 @@ CONTAINS
 !  integer nsteps              : # of steps for polynomial expansion    !
 !  integer dstart              : Starting step to compute '2n-1' and    !
 !                                '2n' moments                           !
-!  real*8 nH                   : Order of 'Htot' matrix                 !
+!  integer nH                  : Order of 'Htot' matrix                 !
 !  real*8 Hval(nElem)          : Non-zero elements from Hamiltonian     !
 !  real*8 Hcol(nElem)          : 'Hval' column indexes                  !
 !  real*8 Hrow(nH+1)           : 'Hval' index of first non-zero         !
 !                                element in row j                       !
+!  integer siteStart           : First site index (local to node)       !
 !  *******************************************************************  !
   subroutine MomentsH2 (state)
 
@@ -247,6 +376,9 @@ CONTAINS
     use options,         only: polDegree, nsteps, dstart
     use hsparse,         only: nH, Hval, Hcol, Hrow
     use string,          only: STRconcat
+#ifdef MPI
+    use lattice,         only: siteStart
+#endif
 
     include 'mkl_blas.fi'
 
@@ -254,11 +386,9 @@ CONTAINS
     integer, intent(in) :: state
 
 !   Local variables.
-    integer :: i
+    integer :: i, lstate
     real(dp), allocatable, dimension (:) :: alpha0, alpha1, alpha2
     character(len=6) :: matdescra ! why 6? who knows...
-
-    write (6,'(a,i5,/)') 'Computing the moments for state ', state
 
 !   Allocate states and moment arrays.
     allocate (alpha0(nH))
@@ -271,12 +401,22 @@ CONTAINS
     call STRconcat (matdescra, 'N', matdescra) ! non-unit diagonal
     call STRconcat (matdescra, 'F', matdescra) ! one-based indexing
 
+!   Local state index.
+#ifdef MPI
+    lstate = state - siteStart + 1
+#else
+    lstate = state
+#endif
+
 !   First step.
     alpha0 = 0.0_dp
     alpha0(state) = 1.0_dp
+    lmu(1,lstate) = 1.0_dp
     call mkl_dcsrmv ('N', nH, nH, 1.0_dp, matdescra, Hval, Hcol,        &
                      Hrow, Hrow(2), alpha0, 0.0_dp, alpha1)
-    muH(2) = alpha1(state)
+
+!   Assign the moment.
+    lmu(2,lstate) = alpha1(state)
 
     do i = 3,dstart-1
 
@@ -285,7 +425,7 @@ CONTAINS
                         Hrow, Hrow(2), alpha1, -1.0_dp, alpha0)
 
 !      Assign the moment.
-       muH(i) = alpha0(state)
+       lmu(i,lstate) = alpha0(state)
 
 !      Update recursive arrays.
        alpha2 = alpha0
@@ -302,9 +442,11 @@ CONTAINS
                         Hrow, Hrow(2), alpha1, -1.0_dp, alpha0)
 
 !      Compute moments.
-       muH(i) = alpha0(state)
-       muH(2*i-2) = 2.0_dp * ddot (nH, alpha0, 1, alpha1, 1) - muH(2)
-       muH(2*i-1) = 2.0_dp * ddot (nH, alpha0, 1, alpha0, 1) - muH(1)
+       lmu(i,lstate) = alpha0(state)
+       lmu(2*i-2,lstate) = 2.0_dp * ddot (nH, alpha0, 1, alpha1, 1)     &
+            - lmu(2,lstate)
+       lmu(2*i-1,lstate) = 2.0_dp * ddot (nH, alpha0, 1, alpha0, 1)     &
+            - lmu(1,lstate)
 
 !      Update recursive arrays.
        alpha2 = alpha0
@@ -321,9 +463,9 @@ CONTAINS
                         Hrow, Hrow(2), alpha1, -1.0_dp, alpha0)
 
 !      Compute moments.
-       muH(nsteps) = alpha0(state)
-       muH(2*nsteps-2) = 2.0_dp * ddot (nH, alpha0, 1, alpha1, 1)       &
-            - muH(2)
+       lmu(nsteps,lstate) = alpha0(state)
+       lmu(2*nsteps-2,lstate) = 2.0_dp * ddot (nH, alpha0, 1, alpha1, 1)&
+            - lmu(2,lstate)
 
     else ! 'polDegree' is odd
 
@@ -332,11 +474,11 @@ CONTAINS
                         Hrow, Hrow(2), alpha1, -1.0_dp, alpha0)
 
 !      Compute moments.
-       muH(nsteps) = alpha0(state)
-       muH(2*nsteps-2) = 2.0_dp * ddot (nH, alpha0, 1, alpha1, 1)       &
-            - muH(2)
-       muH(2*nsteps-1) = 2.0_dp * ddot (nH, alpha0, 1, alpha0, 1)       &
-            - muH(1)
+       lmu(nsteps,lstate) = alpha0(state)
+       lmu(2*nsteps-2,lstate) = 2.0_dp * ddot (nH, alpha0, 1, alpha1, 1)&
+            - lmu(2,lstate)
+       lmu(2*nsteps-1,lstate) = 2.0_dp * ddot (nH, alpha0, 1, alpha0, 1)&
+            - lmu(1,lstate)
 
     endif
 
@@ -359,11 +501,18 @@ CONTAINS
 !  e-mail: brandimarte@gmail.com                                        !
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
+!  *********************** INPUT FROM MODULES ************************  !
+!  integer Node                : Actual node (MPI_Comm_rank)            !
 !  *******************************************************************  !
   subroutine Mfree
 
+!
+! Modules
+!
+    use parallel,        only: Node
+
 !   Free memory.
-    deallocate (muH)
+    if (Node == 0) deallocate (muH)
 
 
   end subroutine Mfree
