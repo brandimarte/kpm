@@ -46,14 +46,11 @@ PROGRAM KPM
   use end,             only: finalize
   use hstd,            only: HSTDbuild
   use hlm,             only: HLMbuild
-  use moment,          only: Minit, MomentsH2
-  use options,         only: lattOrder, memory
+  use moment,          only: Minit, Mcalc
+  use options,         only: memory
   use hsparse,         only: Hrescale
 
   implicit none
-
-! Local variables.
-  integer :: i
 
 ! Proper initialization and reading of input options.
   call initialize
@@ -73,12 +70,8 @@ PROGRAM KPM
 ! Initialize moment array.
   call Minit
 
-  do i = 1,lattOrder
-
-!    Compute the moments.
-     call MomentsH2 (i)
-
-  enddo
+! Compute the moments.
+  call Mcalc
 
 ! Proper ending.
   call finalize

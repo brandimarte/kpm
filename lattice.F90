@@ -37,12 +37,18 @@ MODULE lattice
 !
 ! Modules
 !
+  use parallel,        only: 
   use options,         only: 
 
   implicit none
 
-  PUBLIC  :: LATTsite, LATTneighbors
+  PUBLIC  :: LATTsite, LATTneighbors, LATTdistrib,                      &
+             nLsite, siteStart, siteEnd
   PRIVATE :: LATTpbcTest
+
+  integer :: nLsite ! number of sites (local to node)
+  integer :: siteStart ! first site index (local to node)
+  integer :: siteEnd ! last site index (local to node)
 
 
 CONTAINS
@@ -164,6 +170,72 @@ CONTAINS
 
 
   end subroutine LATTpbcTest
+
+
+!  *******************************************************************  !
+!                              LATTdistrib                              !
+!  *******************************************************************  !
+!  Description: Distribute the sites over the nodes.                    !
+!                                                                       !
+!  Written by Pedro Brandimarte, Dec 2014.                              !
+!  Instituto de Fisica                                                  !
+!  Universidade de Sao Paulo                                            !
+!  e-mail: brandimarte@gmail.com                                        !
+!  ***************************** HISTORY *****************************  !
+!  Original version:    December 2014                                   !
+!  *********************** INPUT FROM MODULES ************************  !
+!  integer Node                : Actual node (rank)                     !
+!  integer Nodes               : Total number of nodes (comm_size)      !
+!  integer lattOrder           : Lattice order                          !
+!                                (# of sites at each dimension)         !
+!  ***************************** OUTPUT ******************************  !
+!  integer nLsite              : Number of sites (local to node)        !
+!  integer siteStart           : First site index (local to node)       !
+!  integer siteEnd             : Last site index (local to node)        !
+!  *******************************************************************  !
+  subroutine LATTdistrib
+
+!
+! Modules
+!
+    use parallel,        only: Node, Nodes
+    use options,         only: lattOrder
+
+!   Input variables.
+    integer :: remainder
+
+    if (lattOrder < Nodes) then ! don't use all nodes
+
+       if (Node+1 <= lattOrder) then
+          nLsite = 1
+          siteStart = Node + 1
+          siteEnd = siteStart + nLsite - 1
+       else
+          nLsite = -1
+          siteStart = -1
+          siteEnd = siteStart + nLsite - 1
+       endif
+
+    else ! use all nodes
+
+       remainder = MOD(lattOrder,Nodes)
+
+!      The first 'remainder' nodes have one more site.
+       if (Node+1 <= remainder) then
+          nLsite = lattOrder / Nodes +1
+          siteStart = Node * nLsite + 1
+          siteEnd = siteStart + nLsite - 1
+       else
+          nLsite = lattOrder / Nodes
+          siteStart = remainder * (nLsite + 1)                          &
+               + (Node - remainder) * nLsite + 1
+          siteEnd = siteStart + nLsite - 1
+       endif
+
+    endif
+
+
+  end subroutine LATTdistrib
 
 
 !  *******************************************************************  !

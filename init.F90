@@ -39,6 +39,7 @@ MODULE init
   use parallel,        only:
   use io,              only: 
   use options,         only: 
+  use lattice,         only: 
   use fdf
 
   implicit none
@@ -79,6 +80,7 @@ CONTAINS
     use parallel,        only: Node, Nodes, IOnode
     use io,              only: IOinit
     use options,         only: OPTread, NumThreads
+    use lattice,         only: LATTdistrib
 
 #ifdef MPI
     include "mpif.h"
@@ -119,6 +121,9 @@ CONTAINS
 
 !   Read simulation data.
     call OPTread
+
+!   Distribute sites over the nodes.
+    call LATTdistrib
 
 !   Set number of threads for parallel (multi-threaded) MKL subroutines.
     call mkl_set_num_threads (NumThreads)

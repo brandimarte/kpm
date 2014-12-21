@@ -85,7 +85,7 @@ CONTAINS
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
 !  *********************** INPUT FROM MODULES ************************  !
-!  logical IOnode              : True if it is the I/O node             !
+!  integer Node                : Actual node (rank)                     !
 !  integer lattOrder           : Lattice order                          !
 !                                (# of sites at each dimension)         !
 !  integer nH                  : Array size (order of Hamiltonian)      !
@@ -95,7 +95,7 @@ CONTAINS
 !
 ! Modules
 !
-    use parallel,        only: IOnode
+    use parallel,        only: Node
     use options,         only: lattOrder
 #ifdef MPI
     use hsparse,         only: nH, Hbcast
@@ -110,7 +110,7 @@ CONTAINS
 !   Order of the full tight-binding Hamiltonian.
     nH = lattOrder*lattOrder
 
-    if (IOnode) then
+    if (Node == 0) then
 
 !      Full Hamiltonian matrix (dense representation).
        allocate (Htot(nH,nH))

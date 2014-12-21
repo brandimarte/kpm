@@ -40,11 +40,12 @@ MODULE moment
   use options,         only: 
   use hsparse,         only: 
   use string,          only: 
+  use lattice,         only: 
 
   implicit none
 
-  PUBLIC  :: Minit, MomentsH, MomentsH2, Mfree, muH
-  PRIVATE ! default is private
+  PUBLIC  :: Minit, Mcalc, Mfree, muH
+  PRIVATE :: MomentsH, MomentsH2
 
   real(dp), allocatable, dimension (:) :: muH ! moments
 
@@ -79,6 +80,46 @@ CONTAINS
 
 
   end subroutine Minit
+
+
+!  *******************************************************************  !
+!                                 Mcalc                                 !
+!  *******************************************************************  !
+!  Description: interface for calling subroutine to compute the         !
+!  moments in parallel and reducing to all nodes.                       !
+!                                                                       !
+!  Written by Pedro Brandimarte, Dec 2014.                              !
+!  Instituto de Fisica                                                  !
+!  Universidade de Sao Paulo                                            !
+!  e-mail: brandimarte@gmail.com                                        !
+!  ***************************** HISTORY *****************************  !
+!  Original version:    December 2014                                   !
+!  *********************** INPUT FROM MODULES ************************  !
+!  integer siteStart           : First site index (local to node)       !
+!  integer siteEnd             : Last site index (local to node)        !
+!  *******************************************************************  !
+  subroutine Mcalc
+
+!
+! Modules
+!
+    use lattice,         only: siteStart, siteEnd
+
+!   Local variables.
+    integer :: i
+
+    do i = siteStart,siteEnd
+
+!      Compute the moments.
+       call MomentsH2 (i)
+
+    enddo
+
+#ifdef MPI
+#endif
+
+
+  end subroutine Mcalc
 
 
 !  *******************************************************************  !
