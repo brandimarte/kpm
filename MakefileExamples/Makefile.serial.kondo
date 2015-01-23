@@ -71,7 +71,7 @@ RM = /bin/rm -f
 # All source files.
 SRCS = precision.F90 parallel.F90 io.F90 string.F90 options.F90         \
 	random.F90 lattice.F90 init.F90 hsparse.F90 hstd.F90 hadt.F90   \
-	hlm.F90 moment.F90 end.F90 kpm.F90
+	hlm.F90 moment.F90 kernel.F90 dct.F90 end.F90 kpm.F90
 
 # All objects.
 OBJS = $(SRCS:.F90=.o)

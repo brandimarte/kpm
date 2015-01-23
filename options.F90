@@ -49,18 +49,21 @@ MODULE options
   integer :: polDegree    ! Degree of Chebyshev polynomial expansion
   integer :: nsteps       ! Number of steps for polynomial expansion
   integer :: dstart       ! Starting step to compute 2n-1 and 2n moments
+  integer :: ngrid        ! Number of energy points
   integer :: NumThreads   ! Number of threads for parallel MKL
 
   integer, parameter :: label_len = 60 ! Length of system label
 
-  real(dp) EnergyMin      ! Lower limit for Hamiltonian eigenvalues
-  real(dp) EnergyMax      ! Upper limit for Hamiltonian eigenvalues
-  real(dp) delta          ! Cutoff for stability in rescaling to [-1,1]
-  real(dp) thop           ! Hopping energy between nearest neighbors
-  real(dp) dW             ! On-site disorder broadening
+  real(dp) :: EnergyMin   ! Lower limit for Hamiltonian eigenvalues
+  real(dp) :: EnergyMax   ! Upper limit for Hamiltonian eigenvalues
+  real(dp) :: delta       ! Cutoff for stability in rescaling to [-1,1]
+  real(dp) :: thop        ! Hopping energy between nearest neighbors
+  real(dp) :: dW          ! On-site disorder broadening
+  real(dp) :: Lresol      ! "Resolution" of Lorentz kernel
 
-  character(len=label_len), save :: slabel ! System Label
-                                           ! (to name output files)
+  character(len=label_len) :: sLabel ! System Label
+                                     ! (to name output files)
+  character(len=8) :: kerLabel       ! Integral kernel to be used
 
 
 CONTAINS
@@ -89,13 +92,16 @@ CONTAINS
 !  integer nsteps              : # of steps for polynomial expansion    !
 !  integer dstart              : Starting step to compute '2n-1' and    !
 !                                '2n' moments                           !
+!  integer ngrid               : Number of energy points                !
 !  integer NumThreads          : # of threads for parallel MKL          !
 !  real*8 EnergyMin            : Lower limit for eigenvalues            !
 !  real*8 EnergyMax            : Upper limit for eigenvalues            !
 !  real*8 delta                : Cutoff for stability in rescaling      !
 !  real*8 thop                 : Hopping energy between 1st neighbors   !
 !  real*8 dW                   : On-site disorder broadening            !
-!  character(label_len) slabel : System Label (for output files)        !
+!  real*8 Lresol               : "Resolution" of Lorentz kernel         !
+!  character(label_len) sLabel : System Label (for output files)        !
+!  character(len=8) kerLabel   : Integral kernel to be used             !
 !  *******************************************************************  !
   subroutine OPTread
 
@@ -109,21 +115,23 @@ CONTAINS
 #endif
 
 !   Local variables.
-    character :: slabel_default*60
+    character :: sLabel_default*60
+    character :: kerLabel_default*8
 #ifdef MPI
     integer :: MPIerror ! Return error code in MPI routines
 #endif
+    logical, external :: leqi ! compare 2 strings (at 'fdf.f')
 
     if (IOnode) then
 
        write (6,'(/,28("*"),a,28("*"))') ' Simulation parameters '
 
-!      Defile System Label (short name to label files).
-       slabel = ""
-       slabel_default = 'kpmsys'
-       slabel = fdf_string ('SystemLabel', slabel_default)
+!      Define System Label (short name to label files).
+       sLabel = ""
+       sLabel_default = 'kpmsys'
+       sLabel = fdf_string ('SystemLabel', sLabel_default)
        write (6,2) 'OPTread: System label                         ' //  &
-            '         =  ', slabel
+            '         =  ', sLabel
 
 !      Lattice order (number of sites at each dimension).
        lattOrder = fdf_integer ('LatticeOrder', 1)
@@ -172,6 +180,19 @@ CONTAINS
             'OPTread: Upper limit for Hamiltonian eigenvalues       =', &
             EnergyMax, ' eV'
 
+!      Number of energy points.
+       ngrid = fdf_integer ('NEnergyGrid', 2*polDegree)
+       if (ngrid < polDegree) then
+          write (6,'(/,a)') 'OPTread: WARNING: Number of energy ' //    &
+               'points is smaller than polynomial degree!'
+          write (6,'(a,/)') 'OPTread: WARNING: Setting NEnergyGrid' //  &
+               'as 2*PolynomialDegree!'
+          ngrid = 2 * polDegree
+       endif
+       write (6,4)                                                      &
+            'OPTread: Number of energy points                       =', &
+            ngrid
+
 !      Cutoff for stability in rescaling to [-1,1].
        delta  = fdf_double ('RescaleCutOff', 0.01_dp)
        write(6,9)                                                       &
@@ -211,12 +232,41 @@ CONTAINS
             'OPTread: Use less memory?                              =', &
             memory
 
+!      Label of the integral kernel to be used ('jackson' or 'lorentz').
+       kerLabel = ""
+       kerLabel_default = 'jackson'
+       kerLabel = fdf_string ('KernelLabel', kerLabel_default)
+       if ((.not. leqi(kerLabel,'jackson')) .AND.                       &
+            (.not. leqi(kerLabel,'lorentz'))) then
+          write (6,'(/,a,/)')                                           &
+               'OPTread: ERROR: Invalid kernel label! Use [jackson]' // &
+               ' or [lorentz]!'
+#ifdef MPI
+          call MPI_Abort (MPI_Comm_World, 1, MPIerror)
+#else
+          stop
+#endif
+       endif
+       write (6,2) 'OPTread: Kernel label                         ' //  &
+            '         =  ', kerLabel
+
+       if (leqi(kerLabel,'lorentz')) then
+
+!         "Resolution" of Lorentz kernel.
+          Lresol = fdf_double ('LorentzResolution', 4.0_dp)
+          write(6,9)                                                    &
+               'OPTread: Resolution of Lorentz kernel             ' //  &
+               '     =', Lresol
+
+       endif
+
        write (6,'(2a)') 'OPTread: ', repeat('*', 70)
+
 
     endif ! if (IOnode)
 
 #ifdef MPI
-    call MPI_Bcast (slabel, label_len, MPI_Character, 0,                &
+    call MPI_Bcast (sLabel, label_len, MPI_Character, 0,                &
                     MPI_Comm_World, MPIerror)
     call MPI_Bcast (lattOrder, 1, MPI_Integer, 0,                       &
                     MPI_Comm_World, MPIerror)
@@ -238,6 +288,13 @@ CONTAINS
                     MPI_Comm_World, MPIerror)
     call MPI_Bcast (memory, 1, MPI_Logical, 0,                          &
                     MPI_Comm_World, MPIerror)
+    call MPI_Bcast (kerLabel, 8, MPI_Character, 0,                      &
+                    MPI_Comm_World, MPIerror)
+    if (leqi(kerLabel,'lorentz')) then
+       call MPI_Bcast (Lresol, 1, MPI_Double_Precision, 0,              &
+                       MPI_Comm_World, MPIerror)
+    endif
+
 #endif
 
 1   format(a,6x,l1)

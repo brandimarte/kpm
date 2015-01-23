@@ -20,8 +20,9 @@
 !  *******************************************************************  !
 !                              PROGRAM KPM                              !
 !  *******************************************************************  !
-!  Description: electron transport in disordered systems with           !
-!  electron-phonon interaction.                                         !
+!  Description: Kernel Polynomial Method implementation using           !
+!  Chebyshev expansion for computing properties of a disordered first   !
+!  neighbors tight-binding square latice.                               !
 !                                                                       !
 !  Written by Pedro Brandimarte, Dec 2014.                              !
 !  Instituto de Fisica                                                  !
@@ -31,8 +32,6 @@
 !  Original version:    December 2014                                   !
 !  *********************** INPUT FROM MODULES ************************  !
 !  logical IOnode              : True if it is the I/O node             !
-!  integer lattOrder           : Lattice order                          !
-!                                (# of sites at each dimension)         !
 !  logical memory              : Use less memory?                       !
 !  *******************************************************************  !
 
@@ -43,12 +42,14 @@ PROGRAM KPM
 !
   use parallel,        only: IOnode
   use init,            only: initialize
-  use end,             only: finalize
+  use options,         only: memory
   use hstd,            only: HSTDbuild
   use hlm,             only: HLMbuild
   use moment,          only: Minit, Mcalc
-  use options,         only: memory
   use hsparse,         only: Hrescale
+  use kernel,          only: KERcalc
+  use dct,             only: DCTgrid, DCTnaive
+  use end,             only: finalize
 
   implicit none
 
@@ -72,6 +73,15 @@ PROGRAM KPM
 
 ! Compute the moments.
   call Mcalc
+
+! Compute the kernel coefficients.
+  call KERcalc
+
+! Assign the energy grid.
+  call DCTgrid
+
+! Reconstruct the expanded function.
+  call DCTnaive
 
 ! Proper ending.
   call finalize

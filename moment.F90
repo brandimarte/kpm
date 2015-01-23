@@ -46,7 +46,7 @@ MODULE moment
   implicit none
 
   PUBLIC  :: Minit, Mcalc, Mfree, muH
-  PRIVATE :: Mgather, MomentsH, MomentsH2
+  PRIVATE :: Mgather, MomentsH, MomentsH2, lmu
 
   real(dp), allocatable, dimension (:,:) :: lmu ! moments (local to node)
   real(dp), allocatable, dimension (:,:) :: muH ! moments (all nodes)
@@ -113,7 +113,7 @@ CONTAINS
 !   Local variables.
     integer :: i
 
-    if (IOnode) write (6,'(a,i5,/)') 'Computing the moments'
+    if (IOnode) write (6,'(a,/)') 'Computing the moments'
 
     do i = siteStart,siteEnd
 
@@ -136,7 +136,8 @@ CONTAINS
 !                                                                       !
 !  OBS.: another option here could have been allocating the full 'muH'  !
 !  in all nodes and then call a MPI_Allgatherv. If we realize that all  !
-!  nodes will need the moments, then we can make this change.           !
+!  nodes will need the moments, then we can make this change or we can  !
+!  broadcast the whole 'muH' to all nodes (less efficient option).      !
 !                                                                       !
 !  Written by Pedro Brandimarte, Dec 2014.                              !
 !  Instituto de Fisica                                                  !

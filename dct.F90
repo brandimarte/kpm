@@ -1,0 +1,229 @@
+!  *******************************************************************  !
+!  KPM Fortran Code 2014                                                !
+!                                                                       !
+!  Written by Eric de Castro e Andrade (eandrade@ift.unesp.br) and      !
+!             Pedro Brandimarte (brandimarte@gmail.com).                !
+!                                                                       !
+!  Copyright (c), All Rights Reserved                                   !
+!                                                                       !
+!  This program is free software. You can redistribute it and/or        !
+!  modify it under the terms of the GNU General Public License          !
+!  (version 3 or later) as published by the Free Software Foundation    !
+!  <http://fsf.org/>.                                                   !
+!                                                                       !
+!  This program is distributed in the hope that it will be useful, but  !
+!  WITHOUT ANY WARRANTY, without even the implied warranty of           !
+!  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU     !
+!  General Public License for more details (file 'LICENSE_GPL'          !
+!  distributed along with this program or at                            !
+!  <http://www.gnu.org/licenses/gpl.html>).                             !
+!  *******************************************************************  !
+!                              MODULE dct                               !
+!  *******************************************************************  !
+!  Description: subroutines for reconstructing the expanded function    !
+!  on a finite set of abscissas (energies) through a discrete cosine    !
+!  transform. Also include a naive reconstruction by direct sum (for    !
+!  comparison only).                                                    !
+!                                                                       !
+!  Written by Pedro Brandimarte, Jan 2015.                              !
+!  Instituto de Fisica                                                  !
+!  Universidade de Sao Paulo                                            !
+!  e-mail: brandimarte@gmail.com                                        !
+!  ***************************** HISTORY *****************************  !
+!  Original version:    January 2015                                    !
+!  *******************************************************************  !
+
+MODULE dct
+
+!
+! Modules
+!
+  use precision,       only: dp
+  use parallel,        only: 
+  use options,         only: 
+  use hsparse,         only: 
+  use moment,          only: 
+  use kernel,          only: 
+
+  implicit none
+
+  PUBLIC  :: DCTgrid, DCTfree, DCTnaive, en
+  PRIVATE :: DCTpoint
+
+  real(dp), allocatable, dimension (:) :: en ! energy points
+  real(dp), allocatable, dimension (:,:) :: gammak ! reconstructed
+                                                   ! function
+
+
+CONTAINS
+
+
+!  *******************************************************************  !
+!                                DCTgrid                                !
+!  *******************************************************************  !
+!  Description: assign the energy grid with the abcissas of Chebyshev   !
+!  numerical integration.                                               !
+!                                                                       !
+!  Written by Pedro Brandimarte, Jan 2015.                              !
+!  Instituto de Fisica                                                  !
+!  Universidade de Sao Paulo                                            !
+!  e-mail: brandimarte@gmail.com                                        !
+!  ***************************** HISTORY *****************************  !
+!  Original version:    January 2015                                    !
+!  *********************** INPUT FROM MODULES ************************  !
+!  integer ngrid               : Number of energy points                !
+!  *******************************************************************  !
+  subroutine DCTgrid
+
+!
+! Modules
+!
+    use parallel,        only: IOnode
+    use options,         only: ngrid
+
+!   Local variables.
+    integer :: k
+
+!   Allocatte energy array.
+    allocate (en(ngrid))
+
+    if (IOnode) write (6,'(a,/)') 'Assign energy grid points'
+
+!   Assign energy points.
+    do k = 1,ngrid
+       en(k) = DCTpoint (k-1, ngrid)
+    enddo
+
+
+  end subroutine DCTgrid
+
+
+!  *******************************************************************  !
+!                               DCTpoint                                !
+!  *******************************************************************  !
+!  Description: returns the 'n'-th energy point ('n'-th abscissa of     !
+!  Chebyshev numerical integration).                                    !
+!                                                                       !
+!  Written by Pedro Brandimarte, Jan 2015.                              !
+!  Instituto de Fisica                                                  !
+!  Universidade de Sao Paulo                                            !
+!  e-mail: brandimarte@gmail.com                                        !
+!  ***************************** HISTORY *****************************  !
+!  Original version:    January 2015                                    !
+!  ****************************** INPUT ******************************  !
+!  integer k                   : Energy index                           !
+!  *********************** INPUT FROM MODULES ************************  !
+!  integer ngrid               : Number of energy points                !
+!  *******************************************************************  !
+  real(dp) function DCTpoint (k, ngrid)
+
+
+!   Input variables.
+    integer, intent(in) :: k, ngrid
+
+!   Local variables.
+    real(dp), parameter :: pi = 3.141592653589793238462643383279502884_dp
+
+    DCTpoint = DCOS(pi * (k + 0.5_dp) / ngrid)
+
+
+  end function DCTpoint
+
+
+!  *******************************************************************  !
+!                               DCTnaive                                !
+!  *******************************************************************  !
+!  Description: naive reconstruction by direct sum.                     !
+!                                                                       !
+!  Written by Pedro Brandimarte, Jan 2015.                              !
+!  Instituto de Fisica                                                  !
+!  Universidade de Sao Paulo                                            !
+!  e-mail: brandimarte@gmail.com                                        !
+!  ***************************** HISTORY *****************************  !
+!  Original version:    January 2015                                    !
+!  *********************** INPUT FROM MODULES ************************  !
+!  integer ngrid               : Number of energy points                !
+!  integer polDegree           : Degree of polynomial expansion         !
+!  integer nH                  : Order of 'Htot' matrix                 !
+!  real*8 muH(polDegree,nH)    : Kernel coefficients                    !
+!  real*8 ker(polDegree)       : Kernel coefficients                    !
+!  *******************************************************************  !
+  subroutine DCTnaive
+
+!
+! Modules
+!
+    use parallel,        only: IOnode
+    use options,         only: ngrid, polDegree
+    use hsparse,         only: nH
+    use moment,          only: muH
+    use kernel,          only: ker
+
+!   Local variables.
+    integer :: i, k, n
+    real(dp) :: t0, t1, t2 ! Chebyshev polinomials
+
+    if (IOnode) write (6,'(a,/)') 'Reconstructing the expanded function'
+
+!   Allocatte reconstructed function array.
+    allocate (gammak(ngrid,nH))
+
+    do i = 1,nH ! over the lattice sites
+       do k = 1,ngrid ! over energy points
+
+!         Initializations.
+          t0 = 1.0_dp
+          t1 = en(k)
+          gammak(k,i) = 0.0_dp
+
+          do n = 3,polDegree ! over the polinomial expansion
+
+!            Recurrence relation.
+             t2 = 2.0_dp * en(k) * t1 - t0
+             t0 = t1
+             t1 = t2
+
+             gammak(k,i) = gammak(k,i) + ker(n) * muH(n,i) * t2
+
+          enddo
+
+!         Increment with the first two contributions.
+          gammak(k,i) = 2.0_dp * gammak(k,i)                            &
+               + ker(1) * muH(1,i) + 2.0_dp * ker(2) * muH(2,i) * en(k)
+
+
+       enddo
+    enddo
+
+
+  end subroutine DCTnaive
+
+
+!  *******************************************************************  !
+!                                DCTfree                                !
+!  *******************************************************************  !
+!  Description: free energy and reconstructed function arrays.          !
+!                                                                       !
+!  Written by Pedro Brandimarte, Jan 2015.                              !
+!  Instituto de Fisica                                                  !
+!  Universidade de Sao Paulo                                            !
+!  e-mail: brandimarte@gmail.com                                        !
+!  ***************************** HISTORY *****************************  !
+!  Original version:    January 2015                                    !
+!  *******************************************************************  !
+  subroutine DCTfree
+
+!   Free memory.
+    deallocate (en)
+    if (allocated (gammak)) deallocate (gammak)
+
+
+  end subroutine DCTfree
+
+
+
+!  *******************************************************************  !
+
+
+END MODULE dct
+

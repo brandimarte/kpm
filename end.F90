@@ -41,6 +41,8 @@ MODULE end
   use io,              only: 
   use hsparse,         only: 
   use moment,          only: 
+  use kernel,          only: 
+  use dct,             only: 
 
   implicit none
 
@@ -77,6 +79,8 @@ CONTAINS
     use io,              only: IOfree
     use hsparse,         only: Hfree
     use moment,          only: Mfree
+    use kernel,          only: KERfree
+    use dct,             only: DCTfree
 
 #ifdef MPI
     include "mpif.h"
@@ -98,6 +102,8 @@ CONTAINS
     call IOfree
     call Hfree
     call Mfree
+    call KERfree
+    call DCTfree
 
     if (IOnode) write (6,'(a,/)') ' done!'
  
