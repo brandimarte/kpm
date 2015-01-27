@@ -210,16 +210,13 @@ CONTAINS
 !  *********************** INPUT FROM MODULES ************************  !
 !  real*8 dW                   : On-site disorder broadening            !
 !  *******************************************************************  !
-  function HLMenergy
+  real(dp) function HLMenergy ()
 
 !
 ! Modules
 !
     use options,         only: dW
     use random,          only: genrand
-
-!   Function type declaration.
-    real(dp) :: HLMenergy
 
 !   Local variables.
     real(dp) :: theta

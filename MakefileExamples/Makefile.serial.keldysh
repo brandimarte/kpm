@@ -51,6 +51,14 @@ MKL_LIBS      = $(MKL)/lib/intel64/libmkl_intel_lp64.a \
 	        $(MKL)/lib/intel64/libmkl_intel_thread.a \
 	        $(MKL)/lib/intel64/libmkl_core.a
 MKL_INCLUDE    = -I$(MKL)/include
+#MKLDFT_INTERFACE = libmkl_dfti.a
+
+# For library creation by the 'ar' command.
+AR = xiar
+
+# Some systems do not have 'ranlib'. If so,
+# use "echo" instead of "ranlib".
+RANLIB = ranlib
 
 #  *******************************************************************  #
 #  Do not change the following lines.                                   #
@@ -107,6 +115,22 @@ $(FDF):
 
 #  *******************************************************************  #
 
+# Creates MKL_DFTI modules:
+MKLDFT=libmkl_dfti.a
+$(MKLDFT):
+	@cp -f $(MKL)/include/mkl_dfti.f90 $(VPATH)/MKLDFT
+	@chmod a+x $(VPATH)/MKLDFT/*
+	@chmod u+w $(VPATH)/MKLDFT/*
+	(cd MKLDFT ; $(MAKE) "FC=$(FC)" "FFLAGS=$(FFLAGS)" \
+	"LDFLAGS=$(LDFLAGS)" "FPPFLAGS=$(FPPFLAGS)" \
+	"INCFLAGS=$(INCFLAGS)" "AR=$(AR)" "RANLIB=$(RANLIB)" \
+	"VPATH=$(VPATH)" module)
+
+# Routines using mkl_dfti calls.
+dct.o : $(MKLDFT)
+
+#  *******************************************************************  #
+
 what:
 	@echo	
 	@echo "Compilation architecture to be used: ${KPM_ARCH}"
@@ -115,8 +139,8 @@ what:
 	@echo
 	@sleep 2
 
-$(EXEC): $(FDF) $(OBJS)
-	$(FC) -o $@ $(LDFLAGS) $(OBJS) $(FDF) $(LDLIBS)
+$(EXEC): $(FDF) $(MKLDFT) $(OBJS)
+	$(FC) -o $@ $(LDFLAGS) $(OBJS) $(MKLDFT) $(FDF) $(LDLIBS)
 
 #  *******************************************************************  #
 
@@ -124,5 +148,6 @@ clean:
 	@echo "==> Cleaning object, library, and executable files"
 	$(RM) *~ \#~ .\#* *.o *.a *.mod *.log $(EXEC) core a.out
 	(cd fdf ; $(MAKE) clean)
+	@if [ -d MKLDFT ] ; then (cd MKLDFT && $(MAKE) clean ) ; fi
 
 #  *******************************************************************  #

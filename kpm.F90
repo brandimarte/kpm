@@ -48,7 +48,7 @@ PROGRAM KPM
   use moment,          only: Minit, Mcalc
   use hsparse,         only: Hrescale
   use kernel,          only: KERcalc
-  use dct,             only: DCTgrid, DCTnaive
+  use dct,             only: DCTgrid, DCTnaive, DCTdct
   use end,             only: finalize
 
   implicit none
@@ -81,7 +81,8 @@ PROGRAM KPM
   call DCTgrid
 
 ! Reconstruct the expanded function.
-  call DCTnaive
+!!$  call DCTnaive
+  call DCTdct
 
 ! Proper ending.
   call finalize

@@ -183,11 +183,18 @@ CONTAINS
 !      Number of energy points.
        ngrid = fdf_integer ('NEnergyGrid', 2*polDegree)
        if (ngrid < polDegree) then
+
           write (6,'(/,a)') 'OPTread: WARNING: Number of energy ' //    &
                'points is smaller than polynomial degree!'
           write (6,'(a,/)') 'OPTread: WARNING: Setting NEnergyGrid' //  &
                'as 2*PolynomialDegree!'
           ngrid = 2 * polDegree
+
+       else
+
+!         'ngrid' must be even for our FFT algorithm.
+          if (MOD(ngrid,2) /= 0) ngrid = ngrid + 1
+
        endif
        write (6,4)                                                      &
             'OPTread: Number of energy points                       =', &

@@ -47,7 +47,7 @@ MODULE dct
 
   implicit none
 
-  PUBLIC  :: DCTgrid, DCTfree, DCTnaive, en
+  PUBLIC  :: DCTgrid, DCTfree, DCTdct, DCTnaive, en
   PRIVATE :: DCTpoint
 
   real(dp), allocatable, dimension (:) :: en ! energy points
@@ -158,45 +158,203 @@ CONTAINS
     use hsparse,         only: nH
     use moment,          only: muH
     use kernel,          only: ker
+! TEMP BEGIN
+    use options,         only: EnergyMin, EnergyMax, delta
+! TEMP END
+#ifdef MPI
+    include "mpif.h"
+#endif
 
 !   Local variables.
     integer :: i, k, n
     real(dp) :: t0, t1, t2 ! Chebyshev polinomials
+#ifdef MPI
+    integer :: MPIerror ! Return error code in MPI routines
+#endif
+! TEMP BEGIN
+    real(dp), parameter :: pi = 3.141592653589793238462643383279502884_dp
+    real(dp) :: alpha, beta
 
-    if (IOnode) write (6,'(a,/)') 'Reconstructing the expanded function'
+!   Assign the scaling factors.
+    alpha = (EnergyMax - EnergyMin) / (2.0_dp - delta)
+    beta = (EnergyMax + EnergyMin) / 2.0_dp
+! TEMP END
 
-!   Allocatte reconstructed function array.
-    allocate (gammak(ngrid,nH))
+    if (IOnode) then
 
-    do i = 1,nH ! over the lattice sites
-       do k = 1,ngrid ! over energy points
+       write (6,'(a,/)') 'Reconstructing the expanded function'
 
-!         Initializations.
-          t0 = 1.0_dp
-          t1 = en(k)
-          gammak(k,i) = 0.0_dp
+!      Allocatte reconstructed function array.
+       allocate (gammak(ngrid,nH))
 
-          do n = 3,polDegree ! over the polinomial expansion
+       do i = 1,nH ! over the lattice sites
+          do k = 1,ngrid ! over energy points
 
-!            Recurrence relation.
-             t2 = 2.0_dp * en(k) * t1 - t0
-             t0 = t1
-             t1 = t2
+!            Initializations.
+             t0 = 1.0_dp
+             t1 = en(k)
+             gammak(k,i) = 0.0_dp
 
-             gammak(k,i) = gammak(k,i) + ker(n) * muH(n,i) * t2
+             do n = 3,polDegree ! over the polinomial expansion
 
-          enddo
+!               Recurrence relation.
+                t2 = 2.0_dp * en(k) * t1 - t0
+                t0 = t1
+                t1 = t2
+
+                gammak(k,i) = gammak(k,i) + ker(n) * muH(n,i) * t2
+
+             enddo
 
 !         Increment with the first two contributions.
-          gammak(k,i) = 2.0_dp * gammak(k,i)                            &
-               + ker(1) * muH(1,i) + 2.0_dp * ker(2) * muH(2,i) * en(k)
+             gammak(k,i) = 2.0_dp * gammak(k,i) + ker(1) * muH(1,i)     &
+                  + 2.0_dp * ker(2) * muH(2,i) * en(k)
+! TEMP BEGIN
+             gammak(k,i) = gammak(k,i) / (pi * DSQRT(1.0_dp - en(k)*en(k)))
+! TEMP END
 
-
+          enddo
        enddo
-    enddo
+
+    endif ! if (IOnode)
+
+! TEMP BEGIN
+    if (IOnode) then
+       do k = 1,ngrid
+!!$          write (1234,'(2f20.14)') alpha * en(k) + beta, SUM(gammak(k,:))
+       write (1234,'(2f20.14)') alpha * en(k) + beta, gammak(k,1)
+       enddo
+    endif
+! TEMP END
+
+#ifdef MPI
+    call MPI_Barrier (MPI_Comm_World, MPIerror)
+#endif
 
 
   end subroutine DCTnaive
+
+
+!  *******************************************************************  !
+!                                DCTdct                                 !
+!  *******************************************************************  !
+!  Description: reconstruction with discrete Fourier transform.         !
+!                                                                       !
+!  Written by Pedro Brandimarte, Jan 2015.                              !
+!  Instituto de Fisica                                                  !
+!  Universidade de Sao Paulo                                            !
+!  e-mail: brandimarte@gmail.com                                        !
+!  ***************************** HISTORY *****************************  !
+!  Original version:    January 2015                                    !
+!  *********************** INPUT FROM MODULES ************************  !
+!  integer ngrid               : Number of energy points                !
+!  integer polDegree           : Degree of polynomial expansion         !
+!  integer nH                  : Order of 'Htot' matrix                 !
+!  real*8 muH(polDegree,nH)    : Kernel coefficients                    !
+!  real*8 ker(polDegree)       : Kernel coefficients                    !
+!  *******************************************************************  !
+  subroutine DCTdct
+
+!
+! Modules
+!
+    use parallel,        only: IOnode
+    use options,         only: ngrid, polDegree
+    use hsparse,         only: nH
+    use moment,          only: muH
+    use kernel,          only: ker
+! TEMP BEGIN
+    use options,         only: EnergyMin, EnergyMax, delta
+! TEMP END
+    use MKL_DFTI
+#ifdef MPI
+    include "mpif.h"
+#endif
+
+!   Local variables.
+    integer :: i, k, n
+    real(dp), parameter :: pi = 3.141592653589793238462643383279502884_dp
+    complex(dp) :: zi = (0.0_dp,1.0_dp) ! complex i
+    complex(dp), allocatable, dimension (:) :: lambda
+#ifdef MPI
+    integer :: MPIerror ! Return error code in MPI routines
+#endif
+
+!   Intel MKL types.
+    TYPE(DFTI_DESCRIPTOR), pointer :: MKLdesc
+    integer :: MKLstatus
+
+! TEMP BEGIN
+    real(dp) :: alpha, beta
+
+!   Assign the scaling factors.
+    alpha = (EnergyMax - EnergyMin) / (2.0_dp - delta)
+    beta = (EnergyMax + EnergyMin) / 2.0_dp
+! TEMP END
+
+    if (IOnode) then
+
+       write (6,'(a,/)') 'Reconstructing the expanded function'
+
+!      Allocatte reconstructed function and 'lambda' arrays.
+       allocate (gammak(ngrid,nH))
+       allocate (lambda(ngrid))
+
+!      Allocate and initialize the descriptor data structure.
+       MKLstatus = DftiCreateDescriptor (MKLdesc, DFTI_COMPLEX,         &
+                                         DFTI_COMPLEX, 1, ngrid)
+
+!      Complete initialization of the previously created descriptor.
+       MKLstatus = DftiCommitDescriptor (MKLdesc)
+
+       do i = 1,nH ! over the lattice sites
+
+!         Assign 'lambda' array.
+          lambda = (0.0_dp, 0.0_dp)
+          lambda(1) = ker(1) * muH(1,i)
+          do n = 2,polDegree
+             lambda(n) = ker(n) * muH(n,i)                              &
+                  * CDEXP(zi * pi * (n - 1) / (2.0_dp * ngrid))
+          enddo
+
+!         Compute the backward FFT.
+          MKLstatus = DftiComputeBackward (MKLdesc, lambda)
+
+!         Compute recontructed function.
+          do k = 1,ngrid/2
+             gammak(2*k-1,i) = DREAL(lambda(k))
+             gammak(2*k,i) = DREAL(lambda(ngrid+1-k))
+          enddo
+
+! TEMP BEGIN
+          do k = 1,ngrid
+             gammak(k,i) = gammak(k,i) / (pi * DSQRT(1.0_dp - en(k)*en(k)))
+          enddo
+! TEMP END
+
+       enddo
+
+!      Free memory.
+       MKLstatus = DftiFreeDescriptor (MKLdesc)
+       deallocate (lambda)
+
+    endif ! if (IOnode)
+
+! TEMP BEGIN
+    if (IOnode) then
+       do k = 1,ngrid
+!!$          write (4321,'(2f20.14)') alpha * en(k) + beta, SUM(gammak(k,:))
+          write (4321,'(2f20.14)') alpha * en(k) + beta, gammak(k,1)
+       enddo
+    endif
+! TEMP END
+
+#ifdef MPI
+    call MPI_Barrier (MPI_Comm_World, MPIerror)
+#endif
+
+
+  end subroutine DCTdct
 
 
 !  *******************************************************************  !
