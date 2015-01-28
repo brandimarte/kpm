@@ -33,15 +33,14 @@
 .SUFFIXES: .f .F .o .a .f90 .F90
 
 # Executable name.
-EXEC = kpmdev
+EXEC = kpm.optim
 
 # Compilation architecture.
 KPM_ARCH = x86_64-unknown-linux-ifort-mkl
 
 # Fortran compiler.
 FC = ifort
-FFLAGS = -O2 -xHost -openmp -traceback -fpe0 \
-         -check assume,bounds,format,output_conversion,pointers,stack,uninit \
+FFLAGS = -O2 -xHost -ip -mp1 \
          -warn unused,truncated_source,uncalled,declarations,usage
 LDFLAGS = -static-intel
 

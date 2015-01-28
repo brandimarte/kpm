@@ -1,13 +1,13 @@
 SystemLabel          teste
-LatticeOrder         12
-PolynomialDegree     100
-Hopping             -0.2 eV
-DisorderBroad        1.5 eV
+LatticeOrder         100
+PolynomialDegree     200
+Hopping             -1.0 eV
+DisorderBroad        0.0 eV
 EnergyMin           -5.0 eV
 EnergyMax            5.0 eV
-NEnergyGrid          90
+NEnergyGrid          400
 RescaleCutOff        0.01
 NumThreads           1
 LessMemory           T
-KernelLabel          lorentz
+KernelLabel          jackson
 LorentzResolution    4.0

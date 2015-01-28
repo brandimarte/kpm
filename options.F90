@@ -281,6 +281,7 @@ CONTAINS
                     MPI_Comm_World, MPIerror)
     call MPI_Bcast (nsteps, 1, MPI_Integer, 0, MPI_Comm_World, MPIerror)
     call MPI_Bcast (dstart, 1, MPI_Integer, 0, MPI_Comm_World, MPIerror)
+    call MPI_Bcast (ngrid, 1, MPI_Integer, 0, MPI_Comm_World, MPIerror)
     call MPI_Bcast (EnergyMin, 1, MPI_Double_Precision, 0,              &
                     MPI_Comm_World, MPIerror)
     call MPI_Bcast (EnergyMax, 1, MPI_Double_Precision, 0,              &

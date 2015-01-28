@@ -33,30 +33,35 @@
 .SUFFIXES: .f .F .o .a .f90 .F90
 
 # Executable name.
-EXEC = kpmdev
+EXEC = kpm.dev
 
 # Compilation architecture.
-KPM_ARCH = x86_64-mac-openmpi-mkl
+KPM_ARCH = x86_64-unknown-linux-openmpi-mkl
 
 # Fortran compiler.
 FC = mpif90
-FFLAGS = -O2 -xHost -openmp -traceback -fpe0 -heap-arrays 1024 \
+FFLAGS = -O0 -openmp -traceback -fpe0 \
          -check assume,bounds,format,output_conversion,pointers,stack,uninit \
          -warn unused,truncated_source,uncalled,declarations,usage
+# Flags for debugging.
+#FFLAGS = -O0 -heap-arrays -auto -g -traceback -fpe0
+#FFLAGS = -O0 -g -traceback -C -ftrapuv -debug all -gen-interfaces \
+#         -fpe0 -fpe-all=0 -no-ftz -assume ieee_fpe_flags \
+#         -assume ieee_fpe_flags -fp-model no-except -fp-speculation=off \
+#         -warn unused,truncated_source,uncalled,declarations,usage,noerrors
 LDFLAGS = -static-intel
 
 # BLAS and LAPACK with MKL.
 MKL           = /opt/intel/composerxe/mkl
-MKL_LIBS      = $(MKL)/lib/libmkl_intel_lp64.a \
-	        $(MKL)/lib/libmkl_intel_thread.a \
-	        $(MKL)/lib/libmkl_core.a
-SCALAPACK_LIBS = /opt/local/lib/libscalapack.a
+MKL_LIBS      = $(MKL)/lib/intel64/libmkl_intel_lp64.a \
+	        $(MKL)/lib/intel64/libmkl_intel_thread.a \
+	        $(MKL)/lib/intel64/libmkl_core.a
 MKL_INCLUDE    = -I$(MKL)/include
 #MKLDFT_INTERFACE = libmkl_dfti.a
 
 # MPI
-MPI_LIBS     = -L/opt/local/lib -lmpi
-MPI_INCLUDE  = -I/opt/local/include
+MPI_LIBS = -L/opt/versatushpc/libraries/openmpi-1.8.1/intel-14.0/lib64 -lmpi
+MPI_INCLUDE = -I/opt/versatushpc/libraries/openmpi-1.8.1/intel-14.0/include
 FPPFLAGS_MPI = -DMPI
 
 # For library creation by the 'ar' command.
@@ -71,7 +76,7 @@ RANLIB = ranlib
 #  *******************************************************************  #
 
 # All libraries.
-LDLIBS = $(MKL_LIBS) $(SCALAPACK_LIBS) -lpthread -lm -liomp5 $(MPI_LIBS)
+LDLIBS = -Wl,--start-group $(MKL_LIBS) -Wl,--end-group -lpthread -lm -liomp5 $(MPI_LIBS)
 
 # All includes.
 INCFLAGS = $(MKL_INCLUDE) $(MPI_INCLUDE)

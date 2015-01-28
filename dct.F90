@@ -41,7 +41,7 @@ MODULE dct
   use precision,       only: dp
   use parallel,        only: 
   use options,         only: 
-  use hsparse,         only: 
+  use lattice,         only: 
   use moment,          only: 
   use kernel,          only: 
 
@@ -144,8 +144,8 @@ CONTAINS
 !  *********************** INPUT FROM MODULES ************************  !
 !  integer ngrid               : Number of energy points                !
 !  integer polDegree           : Degree of polynomial expansion         !
-!  integer nH                  : Order of 'Htot' matrix                 !
-!  real*8 muH(polDegree,nH)    : Kernel coefficients                    !
+!  integer nLsite              : Number of sites (local to node)        !
+!  real*8 lmu(polDegree,nLsite): Moments (local to node)                !
 !  real*8 ker(polDegree)       : Kernel coefficients                    !
 !  *******************************************************************  !
   subroutine DCTnaive
@@ -155,8 +155,8 @@ CONTAINS
 !
     use parallel,        only: IOnode
     use options,         only: ngrid, polDegree
-    use hsparse,         only: nH
-    use moment,          only: muH
+    use lattice,         only: nLsite
+    use moment,          only: lmu
     use kernel,          only: ker
 ! TEMP BEGIN
     use options,         only: EnergyMin, EnergyMax, delta
@@ -180,49 +180,46 @@ CONTAINS
     beta = (EnergyMax + EnergyMin) / 2.0_dp
 ! TEMP END
 
-    if (IOnode) then
+    if (IOnode) write (6,'(a,/)') 'Reconstructing the expanded function'
 
-       write (6,'(a,/)') 'Reconstructing the expanded function'
+!   Allocatte reconstructed function array.
+    allocate (gammak(ngrid,nLsite))
 
-!      Allocatte reconstructed function array.
-       allocate (gammak(ngrid,nH))
+    do i = 1,nLsite ! over the lattice sites
+       do k = 1,ngrid ! over energy points
 
-       do i = 1,nH ! over the lattice sites
-          do k = 1,ngrid ! over energy points
+!         Initializations.
+          t0 = 1.0_dp
+          t1 = en(k)
+          gammak(k,i) = 0.0_dp
 
-!            Initializations.
-             t0 = 1.0_dp
-             t1 = en(k)
-             gammak(k,i) = 0.0_dp
+          do n = 3,polDegree ! over the polinomial expansion
 
-             do n = 3,polDegree ! over the polinomial expansion
+!            Recurrence relation.
+             t2 = 2.0_dp * en(k) * t1 - t0
+             t0 = t1
+             t1 = t2
 
-!               Recurrence relation.
-                t2 = 2.0_dp * en(k) * t1 - t0
-                t0 = t1
-                t1 = t2
-
-                gammak(k,i) = gammak(k,i) + ker(n) * muH(n,i) * t2
-
-             enddo
-
-!         Increment with the first two contributions.
-             gammak(k,i) = 2.0_dp * gammak(k,i) + ker(1) * muH(1,i)     &
-                  + 2.0_dp * ker(2) * muH(2,i) * en(k)
-! TEMP BEGIN
-             gammak(k,i) = gammak(k,i) / (pi * DSQRT(1.0_dp - en(k)*en(k)))
-! TEMP END
+             gammak(k,i) = gammak(k,i) + ker(n) * lmu(n,i) * t2
 
           enddo
-       enddo
 
-    endif ! if (IOnode)
+!         Increment with the first two contributions.
+          gammak(k,i) = 2.0_dp * gammak(k,i) + ker(1) * lmu(1,i)        &
+               + 2.0_dp * ker(2) * lmu(2,i) * en(k)
+! TEMP BEGIN
+          gammak(k,i) = gammak(k,i) / (pi * DSQRT(1.0_dp - en(k)*en(k)))
+! TEMP END
+
+       enddo
+    enddo
 
 ! TEMP BEGIN
     if (IOnode) then
        do k = 1,ngrid
 !!$          write (1234,'(2f20.14)') alpha * en(k) + beta, SUM(gammak(k,:))
-       write (1234,'(2f20.14)') alpha * en(k) + beta, gammak(k,1)
+!!$          write (1234,'(2f20.14)') alpha * en(k) + beta, gammak(k,1)
+          write (1234,'(2f20.14)') en(k), gammak(k,1)
        enddo
     endif
 ! TEMP END
@@ -249,8 +246,8 @@ CONTAINS
 !  *********************** INPUT FROM MODULES ************************  !
 !  integer ngrid               : Number of energy points                !
 !  integer polDegree           : Degree of polynomial expansion         !
-!  integer nH                  : Order of 'Htot' matrix                 !
-!  real*8 muH(polDegree,nH)    : Kernel coefficients                    !
+!  integer nLsite              : Number of sites (local to node)        !
+!  real*8 lmu(polDegree,nLsite): Moments (local to node)                !
 !  real*8 ker(polDegree)       : Kernel coefficients                    !
 !  *******************************************************************  !
   subroutine DCTdct
@@ -260,8 +257,8 @@ CONTAINS
 !
     use parallel,        only: IOnode
     use options,         only: ngrid, polDegree
-    use hsparse,         only: nH
-    use moment,          only: muH
+    use lattice,         only: nLsite
+    use moment,          only: lmu
     use kernel,          only: ker
 ! TEMP BEGIN
     use options,         only: EnergyMin, EnergyMax, delta
@@ -292,59 +289,56 @@ CONTAINS
     beta = (EnergyMax + EnergyMin) / 2.0_dp
 ! TEMP END
 
-    if (IOnode) then
+    if (IOnode) write (6,'(a,/)') 'Reconstructing the expanded function'
 
-       write (6,'(a,/)') 'Reconstructing the expanded function'
+!   Allocatte reconstructed function and 'lambda' FFT arrays.
+    allocate (gammak(ngrid,nLsite))
+    allocate (lambda(ngrid))
 
-!      Allocatte reconstructed function and 'lambda' arrays.
-       allocate (gammak(ngrid,nH))
-       allocate (lambda(ngrid))
+!   Allocate and initialize the descriptor data structure.
+    MKLstatus = DftiCreateDescriptor (MKLdesc, DFTI_DOUBLE,             &
+                                      DFTI_COMPLEX, 1, ngrid)
 
-!      Allocate and initialize the descriptor data structure.
-       MKLstatus = DftiCreateDescriptor (MKLdesc, DFTI_COMPLEX,         &
-                                         DFTI_COMPLEX, 1, ngrid)
+!   Complete initialization of the previously created descriptor.
+    MKLstatus = DftiCommitDescriptor (MKLdesc)
 
-!      Complete initialization of the previously created descriptor.
-       MKLstatus = DftiCommitDescriptor (MKLdesc)
+    do i = 1,nLsite ! over the lattice sites
 
-       do i = 1,nH ! over the lattice sites
-
-!         Assign 'lambda' array.
-          lambda = (0.0_dp, 0.0_dp)
-          lambda(1) = ker(1) * muH(1,i)
-          do n = 2,polDegree
-             lambda(n) = ker(n) * muH(n,i)                              &
-                  * CDEXP(zi * pi * (n - 1) / (2.0_dp * ngrid))
-          enddo
-
-!         Compute the backward FFT.
-          MKLstatus = DftiComputeBackward (MKLdesc, lambda)
-
-!         Compute recontructed function.
-          do k = 1,ngrid/2
-             gammak(2*k-1,i) = DREAL(lambda(k))
-             gammak(2*k,i) = DREAL(lambda(ngrid+1-k))
-          enddo
-
-! TEMP BEGIN
-          do k = 1,ngrid
-             gammak(k,i) = gammak(k,i) / (pi * DSQRT(1.0_dp - en(k)*en(k)))
-          enddo
-! TEMP END
-
+!      Assign 'lambda' array.
+       lambda = (0.0_dp, 0.0_dp)
+       lambda(1) = ker(1) * lmu(1,i)
+       do n = 2,polDegree
+          lambda(n) = 2.0_dp * ker(n) * lmu(n,i)                        &
+               * CDEXP(zi * pi * (n - 1) / (2.0_dp * ngrid))
        enddo
 
-!      Free memory.
-       MKLstatus = DftiFreeDescriptor (MKLdesc)
-       deallocate (lambda)
+!      Compute the backward FFT.
+       MKLstatus = DftiComputeBackward (MKLdesc, lambda)
 
-    endif ! if (IOnode)
+!      Compute recontructed function.
+       do k = 1,ngrid/2
+          gammak(2*k-1,i) = DREAL(lambda(k))
+          gammak(2*k,i) = DREAL(lambda(ngrid+1-k))
+       enddo
+
+! TEMP BEGIN
+       do k = 1,ngrid
+          gammak(k,i) = gammak(k,i) / (pi * DSQRT(1.0_dp - en(k)*en(k)))
+       enddo
+! TEMP END
+
+    enddo
+
+!   Free memory.
+    MKLstatus = DftiFreeDescriptor (MKLdesc)
+    deallocate (lambda)
 
 ! TEMP BEGIN
     if (IOnode) then
        do k = 1,ngrid
 !!$          write (4321,'(2f20.14)') alpha * en(k) + beta, SUM(gammak(k,:))
-          write (4321,'(2f20.14)') alpha * en(k) + beta, gammak(k,1)
+!!$          write (4321,'(2f20.14)') alpha * en(k) + beta, gammak(k,1) / alpha
+          write (4321,'(2f20.14)') en(k), gammak(k,1)
        enddo
     endif
 ! TEMP END

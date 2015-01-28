@@ -1,0 +1,165 @@
+#  *******************************************************************  #
+#  KPM Fortran Code 2014                                                #
+#                                                                       #
+#  Written by Eric de Castro e Andrade (eandrade@ift.unesp.br) and      #
+#             Pedro Brandimarte (brandimarte@gmail.com).                #
+#                                                                       #
+#  Copyright (c), All Rights Reserved                                   #
+#                                                                       #
+#  This program is free software. You can redistribute it and/or        #
+#  modify it under the terms of the GNU General Public License          #
+#  (version 3 or later) as published by the Free Software Foundation    #
+#  <http://fsf.org/>.                                                   #
+#                                                                       #
+#  This program is distributed in the hope that it will be useful, but  #
+#  WITHOUT ANY WARRANTY, without even the implied warranty of           #
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU     #
+#  General Public License for more details (file 'LICENSE_GPL'          #
+#  distributed along with this program or at                            #
+#  <http://www.gnu.org/licenses/gpl.html>).                             #
+#  *******************************************************************  #
+#                               Makefile                                #
+#  *******************************************************************  #
+#  Description: makefile to build KPM code.                             #
+#                                                                       #
+#  Written by Pedro Brandimarte, Dec 2014.                              #
+#  Instituto de Fisica                                                  #
+#  Universidade de Sao Paulo                                            #
+#  e-mail: brandimarte@gmail.com                                        #
+#  ***************************** HISTORY *****************************  #
+#  Original version:    December 2014                                   #
+#  *******************************************************************  #
+
+.SUFFIXES: .f .F .o .a .f90 .F90
+
+# Executable name.
+EXEC = kpm.dev
+
+# Compilation architecture.
+KPM_ARCH = x86_64-mac-openmpi-mkl
+
+# Fortran compiler.
+FC = mpif90
+FFLAGS = -O0 -openmp -traceback -fpe0 -heap-arrays 1024 \
+         -check assume,bounds,format,output_conversion,pointers,stack,uninit \
+         -warn unused,truncated_source,uncalled,declarations,usage
+# Flags for debugging.
+#FFLAGS = -O0 -heap-arrays -auto -g -traceback -fpe0
+#FFLAGS = -O0 -g -traceback -C -ftrapuv -debug all -gen-interfaces \
+#         -fpe0 -fpe-all=0 -no-ftz -assume ieee_fpe_flags \
+#         -assume ieee_fpe_flags -fp-model no-except -fp-speculation=off \
+#         -warn unused,truncated_source,uncalled,declarations,usage,noerrors
+LDFLAGS = -static-intel
+
+# BLAS and LAPACK with MKL.
+MKL           = /opt/intel/composerxe/mkl
+MKL_LIBS      = $(MKL)/lib/libmkl_intel_lp64.a \
+	        $(MKL)/lib/libmkl_intel_thread.a \
+	        $(MKL)/lib/libmkl_core.a
+SCALAPACK_LIBS = /opt/local/lib/libscalapack.a
+MKL_INCLUDE    = -I$(MKL)/include
+#MKLDFT_INTERFACE = libmkl_dfti.a
+
+# MPI
+MPI_LIBS     = -L/opt/local/lib -lmpi
+MPI_INCLUDE  = -I/opt/local/include
+FPPFLAGS_MPI = -DMPI
+
+# For library creation by the 'ar' command.
+AR = xiar
+
+# Some systems do not have 'ranlib'. If so,
+# use "echo" instead of "ranlib".
+RANLIB = ranlib
+
+#  *******************************************************************  #
+#  Do not change the following lines.                                   #
+#  *******************************************************************  #
+
+# All libraries.
+LDLIBS = $(MKL_LIBS) $(SCALAPACK_LIBS) -lpthread -lm -liomp5 $(MPI_LIBS)
+
+# All includes.
+INCFLAGS = $(MKL_INCLUDE) $(MPI_INCLUDE)
+
+# Preprocessor definitions or flags.
+FPPFLAGS = $(FPPFLAGS_MPI)
+
+# Remove command.
+RM = /bin/rm -f
+
+# All source files.
+SRCS = precision.F90 parallel.F90 io.F90 string.F90 options.F90         \
+	random.F90 lattice.F90 init.F90 hsparse.F90 hstd.F90 hadt.F90   \
+	hlm.F90 moment.F90 kernel.F90 dct.F90 end.F90 kpm.F90
+
+# All objects.
+OBJS = $(SRCS:.F90=.o)
+
+VPATH=.
+
+#  *******************************************************************  #
+
+# This block tells make to consider only these suffixes in its operation.
+.SUFFIXES:
+.SUFFIXES: .f .F .o .a .f90 .F90 .cpp
+
+.F90.o:
+	$(FC) $(FFLAGS) -c $(INCFLAGS) $(FPPFLAGS) $<
+
+.F90:
+	make $*.o
+	$(FC) $(FFLAGS) -o $(INCFLAGS) $(FPPFLAGS) $* $*.o $(LDLIBS) 
+
+#  *******************************************************************  #
+
+default: what $(EXEC)
+
+#  *******************************************************************  #
+
+FDF=libfdf.a
+$(FDF): 
+	(cd fdf ; $(MAKE) "FC=$(FC)" "LDFLAGS=$(LDFLAGS)" \
+	"VPATH=$(VPATH)/fdf" module)
+
+# Routines using fdf calls.
+#init.o options.o: $(FDF)
+
+#  *******************************************************************  #
+
+# Creates MKL_DFTI modules:
+MKLDFT=libmkl_dfti.a
+$(MKLDFT):
+	@cp -f $(MKL)/include/mkl_dfti.f90 $(VPATH)/MKLDFT
+	@chmod a+x $(VPATH)/MKLDFT/*
+	@chmod u+w $(VPATH)/MKLDFT/*
+	(cd MKLDFT ; $(MAKE) "FC=$(FC)" "FFLAGS=$(FFLAGS)" \
+	"LDFLAGS=$(LDFLAGS)" "FPPFLAGS=$(FPPFLAGS)" \
+	"INCFLAGS=$(INCFLAGS)" "AR=$(AR)" "RANLIB=$(RANLIB)" \
+	"VPATH=$(VPATH)" module)
+
+# Routines using mkl_dfti calls.
+dct.o : $(MKLDFT)
+
+#  *******************************************************************  #
+
+what:
+	@echo	
+	@echo "Compilation architecture to be used: ${KPM_ARCH}"
+	@echo
+	@echo "Hit ^C to abort..."
+	@echo
+	@sleep 2
+
+$(EXEC): $(FDF) $(MKLDFT) $(OBJS)
+	$(FC) -o $@ $(LDFLAGS) $(OBJS) $(MKLDFT) $(FDF) $(LDLIBS)
+
+#  *******************************************************************  #
+
+clean:
+	@echo "==> Cleaning object, library, and executable files"
+	$(RM) *~ \#~ .\#* *.o *.a *.mod *.log $(EXEC) core a.out
+	(cd fdf ; $(MAKE) clean)
+	@if [ -d MKLDFT ] ; then (cd MKLDFT && $(MAKE) clean ) ; fi
+
+#  *******************************************************************  #

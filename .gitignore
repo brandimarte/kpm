@@ -6,6 +6,7 @@ Icon*
 *.log
 INPUT_TMP.*
 Makefile
-kpmdev
+kpm.dev
+kpm.optim
 !.gitignore
 

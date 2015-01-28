@@ -45,8 +45,8 @@ MODULE moment
 
   implicit none
 
-  PUBLIC  :: Minit, Mcalc, Mfree, muH
-  PRIVATE :: Mgather, MomentsH, MomentsH2, lmu
+  PUBLIC  :: Minit, Mcalc, Mfree, lmu, muH
+  PRIVATE :: Mgather, MomentsH, MomentsH2
 
   real(dp), allocatable, dimension (:,:) :: lmu ! moments (local to node)
   real(dp), allocatable, dimension (:,:) :: muH ! moments (all nodes)
@@ -121,9 +121,6 @@ CONTAINS
        call MomentsH2 (i)
 
     enddo
-
-!   Gather moments from all nodes.
-    call Mgather
 
 
   end subroutine Mcalc
@@ -233,9 +230,6 @@ CONTAINS
 
     endif ! if (nH < Nodes)
 #endif
-
-!   Free local moments.
-    deallocate (lmu)
 
 
   end subroutine Mgather
@@ -502,18 +496,11 @@ CONTAINS
 !  e-mail: brandimarte@gmail.com                                        !
 !  ***************************** HISTORY *****************************  !
 !  Original version:    December 2014                                   !
-!  *********************** INPUT FROM MODULES ************************  !
-!  integer Node                : Actual node (MPI_Comm_rank)            !
 !  *******************************************************************  !
   subroutine Mfree
 
-!
-! Modules
-!
-    use parallel,        only: Node
-
-!   Free memory.
-    if (Node == 0) deallocate (muH)
+!   Free local moments.
+    deallocate (lmu)
 
 
   end subroutine Mfree
