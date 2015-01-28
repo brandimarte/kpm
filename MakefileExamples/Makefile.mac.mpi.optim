@@ -33,7 +33,7 @@
 .SUFFIXES: .f .F .o .a .f90 .F90
 
 # Executable name.
-EXEC = kpm.optim
+EXEC = kpm.mpi.optim
 
 # Compilation architecture.
 KPM_ARCH = x86_64-mac-openmpi-mkl
