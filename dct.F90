@@ -47,7 +47,7 @@ MODULE dct
 
   implicit none
 
-  PUBLIC  :: DCTgrid, DCTfree, DCTdct, DCTnaive, en
+  PUBLIC  :: DCTgrid, DCTfree, DCTdct, DCTnaive, en, gammak
   PRIVATE :: DCTpoint
 
   real(dp), allocatable, dimension (:) :: en ! energy points
@@ -158,27 +158,10 @@ CONTAINS
     use lattice,         only: nLsite
     use moment,          only: lmu
     use kernel,          only: ker
-! TEMP BEGIN
-    use options,         only: EnergyMin, EnergyMax, delta
-! TEMP END
-#ifdef MPI
-    include "mpif.h"
-#endif
 
 !   Local variables.
     integer :: i, k, n
     real(dp) :: t0, t1, t2 ! Chebyshev polinomials
-#ifdef MPI
-    integer :: MPIerror ! Return error code in MPI routines
-#endif
-! TEMP BEGIN
-    real(dp), parameter :: pi = 3.141592653589793238462643383279502884_dp
-    real(dp) :: alpha, beta
-
-!   Assign the scaling factors.
-    alpha = (EnergyMax - EnergyMin) / (2.0_dp - delta)
-    beta = (EnergyMax + EnergyMin) / 2.0_dp
-! TEMP END
 
     if (IOnode) write (6,'(a,/)') 'Reconstructing the expanded function'
 
@@ -207,26 +190,9 @@ CONTAINS
 !         Increment with the first two contributions.
           gammak(k,i) = 2.0_dp * gammak(k,i) + ker(1) * lmu(1,i)        &
                + 2.0_dp * ker(2) * lmu(2,i) * en(k)
-! TEMP BEGIN
-          gammak(k,i) = gammak(k,i) / (pi * DSQRT(1.0_dp - en(k)*en(k)))
-! TEMP END
 
        enddo
     enddo
-
-! TEMP BEGIN
-    if (IOnode) then
-       do k = 1,ngrid
-!!$          write (1234,'(2f20.14)') alpha * en(k) + beta, SUM(gammak(k,:))
-!!$          write (1234,'(2f20.14)') alpha * en(k) + beta, gammak(k,1)
-          write (1234,'(2f20.14)') en(k), gammak(k,1)
-       enddo
-    endif
-! TEMP END
-
-#ifdef MPI
-    call MPI_Barrier (MPI_Comm_World, MPIerror)
-#endif
 
 
   end subroutine DCTnaive
@@ -260,34 +226,17 @@ CONTAINS
     use lattice,         only: nLsite
     use moment,          only: lmu
     use kernel,          only: ker
-! TEMP BEGIN
-    use options,         only: EnergyMin, EnergyMax, delta
-! TEMP END
     use MKL_DFTI
-#ifdef MPI
-    include "mpif.h"
-#endif
 
 !   Local variables.
     integer :: i, k, n
     real(dp), parameter :: pi = 3.141592653589793238462643383279502884_dp
     complex(dp) :: zi = (0.0_dp,1.0_dp) ! complex i
     complex(dp), allocatable, dimension (:) :: lambda
-#ifdef MPI
-    integer :: MPIerror ! Return error code in MPI routines
-#endif
 
 !   Intel MKL types.
     TYPE(DFTI_DESCRIPTOR), pointer :: MKLdesc
     integer :: MKLstatus
-
-! TEMP BEGIN
-    real(dp) :: alpha, beta
-
-!   Assign the scaling factors.
-    alpha = (EnergyMax - EnergyMin) / (2.0_dp - delta)
-    beta = (EnergyMax + EnergyMin) / 2.0_dp
-! TEMP END
 
     if (IOnode) write (6,'(a,/)') 'Reconstructing the expanded function'
 
@@ -321,31 +270,11 @@ CONTAINS
           gammak(2*k,i) = DREAL(lambda(ngrid+1-k))
        enddo
 
-! TEMP BEGIN
-       do k = 1,ngrid
-          gammak(k,i) = gammak(k,i) / (pi * DSQRT(1.0_dp - en(k)*en(k)))
-       enddo
-! TEMP END
-
     enddo
 
 !   Free memory.
     MKLstatus = DftiFreeDescriptor (MKLdesc)
     deallocate (lambda)
-
-! TEMP BEGIN
-    if (IOnode) then
-       do k = 1,ngrid
-!!$          write (4321,'(2f20.14)') alpha * en(k) + beta, SUM(gammak(k,:))
-!!$          write (4321,'(2f20.14)') alpha * en(k) + beta, gammak(k,1) / alpha
-          write (4321,'(2f20.14)') en(k), gammak(k,1)
-       enddo
-    endif
-! TEMP END
-
-#ifdef MPI
-    call MPI_Barrier (MPI_Comm_World, MPIerror)
-#endif
 
 
   end subroutine DCTdct
