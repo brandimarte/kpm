@@ -3,8 +3,8 @@
 *.mod
 *.a
 *.log
+make.inc
 INPUT_TMP.*
-Makefile
 kpm.dev
 kpm.optim
 fctAll.dat
