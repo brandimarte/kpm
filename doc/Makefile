@@ -20,7 +20,7 @@
 #  *******************************************************************  #
 #                               Makefile                                #
 #  *******************************************************************  #
-#  Description: main makefile for building KPM code.                    #
+#  Description: makefile for Doxygen documentation.                     #
 #                                                                       #
 #  Written by Pedro Brandimarte, Dec 2014.                              #
 #  Instituto de Fisica                                                  #
@@ -30,59 +30,23 @@
 #  Original version:    December 2014                                   #
 #  *******************************************************************  #
 
-KPM_DIR = .
-include $(KPM_DIR)/make.inc
-
-#  *******************************************************************  #
-
-.PHONY: all doc build clean cleanall
+# Remove command.
+RM = /bin/rm -f
 
 .DEFAULT_GOAL := all
 
 default: all
 
-all: what doc build
-
-#  *******************************************************************  #
-
-what:
-	@echo "#  ***************************************************  #"
-	@echo "#  KPM Fortran Code 2014                                #"
-	@echo "#                                                       #"
-	@echo "#  Written by:                                          #"
-	@echo "#                                                       #"
-	@echo "#    Eric de Castro e Andrade (eandrade@ift.unesp.br)   #"
-	@echo "#    Pedro Brandimarte (brandimarte@gmail.com)          #"
-	@echo "#                                                       #"
-	@echo "#  Copyright (c), All Rights Reserved                   #"
-	@echo "#                                                       #"
-	@echo "#  This program is free software. You can redistribute  #"
-	@echo "#  it and/or modify it under the terms of the GNU       #"
-	@echo "#  General Public License (version 3 or later) as       #"
-	@echo "#  published by the Free Software Foundation            #"
-	@echo "#  <http://fsf.org/>.                                   #"
-	@echo "#  ***************************************************  #"
-	@echo ""
-
-#  *******************************************************************  #
-
-# Doxygen documentation.
-doc: 
-	( cd doc && $(MAKE) )
-
-#  *******************************************************************  #
-
-# KPM code.
-build:
-	( cd src && $(MAKE) )
-
-#  *******************************************************************  #
+all:
+	doxygen doxyfile
 
 clean:
-	( cd doc && $(MAKE) clean )
-	( cd src && $(MAKE) clean )
+	@echo "==> Cleaning documentation files"
+	$(RM) output_err
+	( cd html && $(RM) *.png *.html *.css *.js && \
+	cd search && $(RM) *.png *.html *.css *.js )
+	( cd latex && $(MAKE) clean )
 
 cleanall:
-	( cd doc && $(MAKE) cleanall )
-	( cd src && $(MAKE) cleanall )
+	( $(RM) -r html latex output_err )
 

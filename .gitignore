@@ -5,9 +5,10 @@
 *.log
 make.inc
 INPUT_TMP.*
-kpm.dev
-kpm.optim
+kpm.dev.*
+kpm.optim.*
 fctAll.dat
 gammaAll.dat
+mkl_dfti.f90
 !.gitignore
 

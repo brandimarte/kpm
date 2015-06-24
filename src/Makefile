@@ -109,8 +109,8 @@ default: what $(EXEC)
 
 FDF=libfdf.a
 $(FDF): 
-	(cd fdf ; $(MAKE) "FC=$(FC)" "LDFLAGS=$(LDFLAGS)" \
-	"VPATH=$(DIR)/fdf" module)
+	( cd fdf ; $(MAKE) "FC=$(FC)" "LDFLAGS=$(LDFLAGS)" \
+	"VPATH=$(DIR)/fdf" module )
 
 # Routines using fdf calls.
 #init.o options.o: $(FDF)
@@ -124,10 +124,10 @@ $(MKLDFT):
 	@cp -f $(MKL)/include/mkl_dfti.f90 $(DIR)/MKLDFT
 	@chmod a+x $(DIR)/MKLDFT/*
 	@chmod u+w $(DIR)/MKLDFT/*
-	(cd MKLDFT ; $(MAKE) "FC=$(FC)" "FFLAGS=$(FFLAGS)" \
+	( cd MKLDFT ; $(MAKE) "FC=$(FC)" "FFLAGS=$(FFLAGS)" \
 	"LDFLAGS=$(LDFLAGS)" "FPPFLAGS=$(FPPFLAGS)" \
 	"INCFLAGS=$(INCFLAGS)" "AR=$(AR)" "RANLIB=$(RANLIB)" \
-	"VPATH=$(DIR)" module)
+	"VPATH=$(DIR)" module )
 
 # Routines using mkl_dfti calls.
 dct.o : $(MKLDFT)
@@ -155,7 +155,7 @@ clean:
 cleanall: clean
 	@echo "==> Cleaning libraries compilations"
 	$(RM) *.a
-	(cd fdf ; $(MAKE) clean)
-	@if [ -d MKLDFT ] ; then (cd MKLDFT && $(MAKE) clean ) ; fi
+	( cd fdf ; $(MAKE) clean )
+	@if [ -d MKLDFT ] ; then ( cd MKLDFT && $(MAKE) clean ) ; fi
 
 #  *******************************************************************  #
