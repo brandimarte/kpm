@@ -18,59 +18,52 @@
 #  distributed along with this program or at                            #
 #  <http://www.gnu.org/licenses/gpl.html>).                             #
 #  *******************************************************************  #
-#                               makefile                                #
+#                               make.inc                                #
 #  *******************************************************************  #
-#  Description: makefile to build the compiler dependent MKL interface  #
-#  for computing discrete Fourier transform through the fast Fourier    #
-#  transform algorithm on distributed-memory architectures (clusters).  #
+#  Description: architecture dependent options to build KPM code.       #
 #                                                                       #
-#  Written by Pedro Brandimarte, Jan 2015.                              #
+#  Written by Pedro Brandimarte, Dec 2014.                              #
 #  Instituto de Fisica                                                  #
 #  Universidade de Sao Paulo                                            #
 #  e-mail: brandimarte@gmail.com                                        #
 #  ***************************** HISTORY *****************************  #
-#  Original version:    January 2015                                    #
+#  Original version:    December 2014                                   #
 #  *******************************************************************  #
 
-# For VPATH operation.
-INCFLAGS:=-I$(VPATH) $(INCFLAGS)
+# Executable name.
+EXEC = kpm.optim.OpenMPI.i2013
 
-# Remove command.
-RM = /bin/rm -f
+# Compilation architecture.
+KPM_ARCH = x86_64-unknown-linux-openmpi-intel2013-mkl
 
-#  *******************************************************************  #
+# Fortran compiler.
+FC = mpif90
+FFLAGS = -O2 -xHost -ip -mp1 \
+         -warn unused,truncated_source,uncalled,declarations,usage
+LDFLAGS = -static-intel
 
-mkl_dfti.o: 
-	$(FC) $(FFLAGS) -c $(INCFLAGS) $(FPPFLAGS) $(VPATH)/$*.f90
+# BLAS and LAPACK with MKL.
+MKL           = /opt/intel/composerxe/mkl
+MKL_LIBS      = $(MKL)/lib/intel64/libmkl_intel_lp64.a \
+	        $(MKL)/lib/intel64/libmkl_intel_thread.a \
+	        $(MKL)/lib/intel64/libmkl_core.a
+SCALAPACK_LIBS = $(MKL)/lib/intel64/libmkl_blacs_openmpi_lp64.a \
+	         $(MKL)/lib/intel64/libmkl_scalapack_lp64.a
+MKL_INCLUDE    = -I$(MKL)/include
+#MKLDFT_INTERFACE = libmkl_dfti.a
 
-#  *******************************************************************  #
+# MPI
+MPI_LIBS     = -L/opt/versatushpc/libraries/openmpi-1.6.5/intel-14.0/lib64 -lmpi
+MPI_INCLUDE  = -I/opt/versatushpc/libraries/openmpi-1.6.5/intel-14.0/include
+FPPFLAGS_MPI = -DMPI
 
-# Include copying operations in rule to make
-# sure that they are always performed.
-default: module
+# Include more libraries.
+OTHER_LIBS = -lpthread -lm -liomp5
 
-#  *******************************************************************  #
+# For library creation by the 'ar' command.
+AR = xiar
 
-module: libmkl_dfti.a
-	cp libmkl_dfti.a ..
-	@cp -p *.*d ..
-#	@cp *.mod ..
-#	@touch module_built
+# Some systems do not have 'ranlib'. If so,
+# use "echo" instead of "ranlib".
+RANLIB = ranlib
 
-#  *******************************************************************  #
-
-check_flags:
-	@echo "In MKLDFT, INCFLAGS is: $(INCFLAGS)"
-
-#  *******************************************************************  #
-
-libmkl_dfti.a: check_flags mkl_dfti.o
-	@$(AR) cru libmkl_dfti.a mkl_dfti.o
-	-$(RANLIB) libmkl_dfti.a
-
-#  *******************************************************************  #
-
-clean:
-	$(RM) *.o *.a *.mod *~ \#~ .\#*
-
-#  *******************************************************************  #

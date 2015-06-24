@@ -18,9 +18,9 @@
 #  distributed along with this program or at                            #
 #  <http://www.gnu.org/licenses/gpl.html>).                             #
 #  *******************************************************************  #
-#                               Makefile                                #
+#                               make.inc                                #
 #  *******************************************************************  #
-#  Description: makefile to build KPM code.                             #
+#  Description: architecture dependent options to build KPM code.       #
 #                                                                       #
 #  Written by Pedro Brandimarte, Dec 2014.                              #
 #  Instituto de Fisica                                                  #
@@ -30,18 +30,15 @@
 #  Original version:    December 2014                                   #
 #  *******************************************************************  #
 
-.SUFFIXES: .f .F .o .a .f90 .F90
-
 # Executable name.
-EXEC = kpm.serial.dev
+EXEC = kpm.dev.OpenMPI.i2013
 
 # Compilation architecture.
-KPM_ARCH = x86_64-unknown-linux-ifort-mkl
+KPM_ARCH = x86_64-unknown-linux-openmpi-intel2013-mkl
 
 # Fortran compiler.
-FC = ifort
-FFLAGS = -O0 -openmp -traceback -fpe0 \
-         -check assume,bounds,format,output_conversion,pointers,stack,uninit \
+FC = mpif90
+FFLAGS = -O0 -openmp -traceback -C -fpe0 -heap-arrays 1024 \
          -warn unused,truncated_source,uncalled,declarations,usage
 # Flags for debugging.
 #FFLAGS = -O0 -heap-arrays -auto -g -traceback -fpe0
@@ -56,8 +53,18 @@ MKL           = /opt/intel/composerxe/mkl
 MKL_LIBS      = $(MKL)/lib/intel64/libmkl_intel_lp64.a \
 	        $(MKL)/lib/intel64/libmkl_intel_thread.a \
 	        $(MKL)/lib/intel64/libmkl_core.a
+SCALAPACK_LIBS = $(MKL)/lib/intel64/libmkl_blacs_openmpi_lp64.a \
+	         $(MKL)/lib/intel64/libmkl_scalapack_lp64.a
 MKL_INCLUDE    = -I$(MKL)/include
 #MKLDFT_INTERFACE = libmkl_dfti.a
+
+# MPI
+MPI_LIBS     = -L/opt/versatushpc/libraries/openmpi-1.6.5/intel-14.0/lib64 -lmpi
+MPI_INCLUDE  = -I/opt/versatushpc/libraries/openmpi-1.6.5/intel-14.0/include
+FPPFLAGS_MPI = -DMPI
+
+# Include more libraries.
+OTHER_LIBS = -lpthread -lm -liomp5
 
 # For library creation by the 'ar' command.
 AR = xiar
@@ -66,94 +73,3 @@ AR = xiar
 # use "echo" instead of "ranlib".
 RANLIB = ranlib
 
-#  *******************************************************************  #
-#  Do not change the following lines.                                   #
-#  *******************************************************************  #
-
-# All libraries.
-LDLIBS = -Wl,--start-group $(MKL_LIBS) -Wl,--end-group -lpthread -lm -liomp5
-
-# All includes.
-INCFLAGS = $(MKL_INCLUDE)
-
-# Preprocessor definitions or flags.
-FPPFLAGS = 
-
-# Remove command.
-RM = /bin/rm -f
-
-# All source files.
-SRCS = precision.F90 parallel.F90 io.F90 string.F90 options.F90         \
-	random.F90 lattice.F90 init.F90 hsparse.F90 hstd.F90 hadt.F90   \
-	hlm.F90 moment.F90 kernel.F90 dct.F90 output.F90 end.F90 kpm.F90
-
-# All objects.
-OBJS = $(SRCS:.F90=.o)
-
-VPATH=.
-
-#  *******************************************************************  #
-
-# This block tells make to consider only these suffixes in its operation.
-.SUFFIXES:
-.SUFFIXES: .f .F .o .a .f90 .F90 .cpp
-
-.F90.o:
-	$(FC) $(FFLAGS) -c $(INCFLAGS) $(FPPFLAGS) $<
-
-.F90:
-	make $*.o
-	$(FC) $(FFLAGS) -o $(INCFLAGS) $(FPPFLAGS) $* $*.o $(LDLIBS) 
-
-#  *******************************************************************  #
-
-default: what $(EXEC)
-
-#  *******************************************************************  #
-
-FDF=libfdf.a
-$(FDF): 
-	(cd fdf ; $(MAKE) "FC=$(FC)" "LDFLAGS=$(LDFLAGS)" \
-	"VPATH=$(VPATH)/fdf" module)
-
-# Routines using fdf calls.
-#init.o options.o: $(FDF)
-
-#  *******************************************************************  #
-
-# Creates MKL_DFTI modules:
-MKLDFT=libmkl_dfti.a
-$(MKLDFT):
-	@cp -f $(MKL)/include/mkl_dfti.f90 $(VPATH)/MKLDFT
-	@chmod a+x $(VPATH)/MKLDFT/*
-	@chmod u+w $(VPATH)/MKLDFT/*
-	(cd MKLDFT ; $(MAKE) "FC=$(FC)" "FFLAGS=$(FFLAGS)" \
-	"LDFLAGS=$(LDFLAGS)" "FPPFLAGS=$(FPPFLAGS)" \
-	"INCFLAGS=$(INCFLAGS)" "AR=$(AR)" "RANLIB=$(RANLIB)" \
-	"VPATH=$(VPATH)" module)
-
-# Routines using mkl_dfti calls.
-dct.o : $(MKLDFT)
-
-#  *******************************************************************  #
-
-what:
-	@echo	
-	@echo "Compilation architecture to be used: ${KPM_ARCH}"
-	@echo
-	@echo "Hit ^C to abort..."
-	@echo
-	@sleep 2
-
-$(EXEC): $(FDF) $(MKLDFT) $(OBJS)
-	$(FC) -o $@ $(LDFLAGS) $(OBJS) $(MKLDFT) $(FDF) $(LDLIBS)
-
-#  *******************************************************************  #
-
-clean:
-	@echo "==> Cleaning object, library, and executable files"
-	$(RM) *~ \#~ .\#* *.o *.a *.mod *.log $(EXEC) core a.out
-	(cd fdf ; $(MAKE) clean)
-	@if [ -d MKLDFT ] ; then (cd MKLDFT && $(MAKE) clean ) ; fi
-
-#  *******************************************************************  #
