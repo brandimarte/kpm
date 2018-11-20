@@ -1,0 +1,73 @@
+.TH "io" 3 "Tue Nov 20 2018" "Version 1.0" "KPM" \" -*- nroff -*-
+.ad l
+.nh
+.SH NAME
+io
+.SH SYNOPSIS
+.br
+.PP
+.SS "Functions/Subroutines"
+
+.in +1c
+.ti -1c
+.RI "subroutine, public \fBioinit\fP"
+.br
+.ti -1c
+.RI "subroutine, public \fBioassign\fP (lun)"
+.br
+.ti -1c
+.RI "subroutine, public \fBioclose\fP (lun)"
+.br
+.ti -1c
+.RI "subroutine, public \fBioopenstreamnew\fP (file, lunit, IOSTAT)"
+.br
+.ti -1c
+.RI "subroutine, public \fBioopenstream\fP (file, lunit, IOSTAT)"
+.br
+.ti -1c
+.RI "subroutine, public \fBioclosestream\fP (file, lunit, IOSTAT)"
+.br
+.ti -1c
+.RI "subroutine, public \fBiofree\fP"
+.br
+.in -1c
+.SS "Variables"
+
+.in +1c
+.ti -1c
+.RI "integer \fBmin_lun\fP = 10"
+.br
+.ti -1c
+.RI "integer \fBmax_lun\fP = 99"
+.br
+.ti -1c
+.RI "logical, dimension(:), allocatable \fBlun_is_free\fP"
+.br
+.in -1c
+.SH "Function/Subroutine Documentation"
+.PP 
+.SS "subroutine, public io::ioassign (integer, intent(out) lun)"
+
+.SS "subroutine, public io::ioclose (integer, intent(in) lun)"
+
+.SS "subroutine, public io::ioclosestream (character(*), intent(in) file, integer, intent(in) lunit, integer, intent(out), optional IOSTAT)"
+
+.SS "subroutine, public io::iofree ()"
+
+.SS "subroutine, public io::ioinit ()"
+
+.SS "subroutine, public io::ioopenstream (character(*), intent(in) file, integer, intent(in) lunit, integer, intent(out), optional IOSTAT)"
+
+.SS "subroutine, public io::ioopenstreamnew (character(*), intent(in) file, integer, intent(in) lunit, integer, intent(out), optional IOSTAT)"
+
+.SH "Variable Documentation"
+.PP 
+.SS "logical, dimension (:), allocatable io::lun_is_free"
+
+.SS "integer io::max_lun = 99"
+
+.SS "integer io::min_lun = 10"
+
+.SH "Author"
+.PP 
+Generated automatically by Doxygen for KPM from the source code\&.

@@ -1,0 +1,63 @@
+.TH "hsparse" 3 "Tue Nov 20 2018" "Version 1.0" "KPM" \" -*- nroff -*-
+.ad l
+.nh
+.SH NAME
+hsparse
+.SH SYNOPSIS
+.br
+.PP
+.SS "Functions/Subroutines"
+
+.in +1c
+.ti -1c
+.RI "subroutine, public \fBhrescale\fP"
+.br
+.ti -1c
+.RI "subroutine, public \fBhfree\fP"
+.br
+.ti -1c
+.RI "subroutine, public \fBhbcast\fP"
+.br
+.in -1c
+.SS "Variables"
+
+.in +1c
+.ti -1c
+.RI "integer, public \fBnh\fP"
+.br
+.ti -1c
+.RI "integer, public \fBnelem\fP"
+.br
+.ti -1c
+.RI "integer, dimension(:), allocatable, public \fBhcol\fP"
+.br
+.ti -1c
+.RI "integer, dimension(:), allocatable, public \fBhrow\fP"
+.br
+.ti -1c
+.RI "real(dp), dimension(:), allocatable, public \fBhval\fP"
+.br
+.in -1c
+.SH "Function/Subroutine Documentation"
+.PP 
+.SS "subroutine, public hsparse::hbcast ()"
+
+.SS "subroutine, public hsparse::hfree ()"
+
+.SS "subroutine, public hsparse::hrescale ()"
+
+.SH "Variable Documentation"
+.PP 
+.SS "integer, dimension (:), allocatable, public hsparse::hcol"
+
+.SS "integer, dimension (:), allocatable, public hsparse::hrow"
+
+.SS "real(dp), dimension (:), allocatable, public hsparse::hval"
+
+.SS "integer, public hsparse::nelem"
+
+.SS "integer, public hsparse::nh"
+
+.SH "Author"
+.PP 
+Generated automatically by Doxygen for KPM from the source code\&.

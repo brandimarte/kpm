@@ -1,0 +1,107 @@
+This file is processed with Doxygen. See docs/html/index.html for
+formatted version.
+
+/* ******************************************************************* *\
+ * Copyright (c), All Rights Reserved                                  *
+ *                                                                     *
+ * This program is free software. You can redistribute it and/or       *
+ * modify it under the terms of the GNU General Public License         *
+ * (version 3 or later) as published by the Free Software Foundation   *
+ * <http://fsf.org/>.                                                  *
+ *                                                                     *
+ * This program is distributed in the hope that it will be useful, but *
+ * WITHOUT ANY WARRANTY, without even the implied warranty of          *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU    *
+ * General Public License for more details (file 'LICENSE_GPL'         *
+ * distributed along with this program or at                           *
+ * <http://www.gnu.org/licenses/gpl.html>).                            *
+\* ******************************************************************* */
+
+/**
+
+*************************************************************************
+@mainpage KPM User Guide
+
+Instituto de Física - USP, Brazil \n
+Instituto de Física Teórica - UNESP, Brazil \n
+Centro de Fisica de Materiales, Spain
+@date July 2015
+
+Kernel Polynomial Method implementation using Chebyshev expansion for
+computing properties of a disordered tight-binding lattices (square or
+quasicrystals).
+
+<!-- @section Introduction -->
+<!-- For example, one can add diagrams to the document. -->
+<!-- @image html exampleImage.png -->
+
+Write some introductory remarks in this section.
+
+
+*************************************************************************
+@page authors Collaborators
+
+- Pedro Brandimarte (USP, Brazil / CFM, Spain)
+- Eric de Castro e Andrade (UNESP, Brazil)
+
+
+*************************************************************************
+@page installing Installing KPM
+
+pre-requisites, paths, library_paths etc.
+
+
+*************************************************************************
+@page examples Examples
+
+put the square lattice example. 
+
+
+*************************************************************************
+@page methodology Methodology
+
+Chebyshev Polynomials
+=====================
+
+About the Chebyshev expansion.
+
+Kernel Polynomial Method
+========================
+
+About the main KPM method.
+
+
+*************************************************************************
+@page routines Routines
+
+Here follows the main routines:
+
+\ref hstd
+
+\ref hlm
+
+HSTD {#hstd}
+============
+
+Build the sparse tight-binding Hamiltonian matrix in standard way
+(allocate and assign the full Hamiltonian in dense representation and
+then convert to sparse format).
+
+HLM {#hlm}
+==========
+
+Build the sparse tight-binding Hamiltonian matrix using less memory
+(it uses an abstract data type for storing the indexes of all non-zero
+elements and then build the Hamiltonian directly in sparse format).
+
+
+*************************************************************************
+@page types Data types
+
+ADTs
+----
+
+Abstract data types explanation.
+
+
+*/
