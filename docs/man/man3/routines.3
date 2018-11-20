@@ -1,0 +1,16 @@
+.TH "routines" 3 "Tue Nov 20 2018" "Version 1.0" "KPM" \" -*- nroff -*-
+.ad l
+.nh
+.SH NAME
+routines \- Routines 
+Here follows the main routines:
+.PP
+\fBHSTD \fP
+.PP
+\fBHLM \fP
+.SH "HSTD "
+.PP
+Build the sparse tight-binding Hamiltonian matrix in standard way (allocate and assign the full Hamiltonian in dense representation and then convert to sparse format)\&.
+.SH "HLM "
+.PP
+Build the sparse tight-binding Hamiltonian matrix using less memory (it uses an abstract data type for storing the indexes of all non-zero elements and then build the Hamiltonian directly in sparse format)\&. 

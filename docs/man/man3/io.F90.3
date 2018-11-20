@@ -1,0 +1,56 @@
+.TH "/home/pedro/local/src/kpm/src/io.F90" 3 "Tue Nov 20 2018" "Version 1.0" "KPM" \" -*- nroff -*-
+.ad l
+.nh
+.SH NAME
+/home/pedro/local/src/kpm/src/io.F90
+.SH SYNOPSIS
+.br
+.PP
+.SS "Modules"
+
+.in +1c
+.ti -1c
+.RI "module \fBio\fP"
+.br
+.in -1c
+.SS "Functions/Subroutines"
+
+.in +1c
+.ti -1c
+.RI "subroutine, public \fBio::ioinit\fP"
+.br
+.ti -1c
+.RI "subroutine, public \fBio::ioassign\fP (lun)"
+.br
+.ti -1c
+.RI "subroutine, public \fBio::ioclose\fP (lun)"
+.br
+.ti -1c
+.RI "subroutine, public \fBio::ioopenstreamnew\fP (file, lunit, IOSTAT)"
+.br
+.ti -1c
+.RI "subroutine, public \fBio::ioopenstream\fP (file, lunit, IOSTAT)"
+.br
+.ti -1c
+.RI "subroutine, public \fBio::ioclosestream\fP (file, lunit, IOSTAT)"
+.br
+.ti -1c
+.RI "subroutine, public \fBio::iofree\fP"
+.br
+.in -1c
+.SS "Variables"
+
+.in +1c
+.ti -1c
+.RI "integer \fBio::min_lun\fP = 10"
+.br
+.ti -1c
+.RI "integer \fBio::max_lun\fP = 99"
+.br
+.ti -1c
+.RI "logical, dimension(:), allocatable \fBio::lun_is_free\fP"
+.br
+.in -1c
+.SH "Author"
+.PP 
+Generated automatically by Doxygen for KPM from the source code\&.
