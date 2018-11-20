@@ -1,4 +1,6 @@
 output_err
 latex/
+html/
+man/man3/_*
 !.gitignore
 
