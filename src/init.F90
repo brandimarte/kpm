@@ -1,8 +1,8 @@
 !  *******************************************************************  !
 !  KPM Fortran Code 2014                                                !
 !                                                                       !
-!  Written by Eric de Castro e Andrade (eandrade@ift.unesp.br) and      !
-!             Pedro Brandimarte (brandimarte@gmail.com).                !
+!  By Pedro Brandimarte (brandimarte@gmail.com) and                     !
+!     Eric de Castro e Andrade (eandrade@ift.unesp.br)                  !
 !                                                                       !
 !  Copyright (c), All Rights Reserved                                   !
 !                                                                       !
@@ -264,10 +264,10 @@ CONTAINS
          '                            ',                                &
          values(1), '.', values(2), '.', values(3), ' , ',              &
          values(5), ':', values(6), ':', values(7)
-    write (6,'(/,a)') '      Written by Eric de Castro e Andrade '   // &
-         '(eandrade@ift.unesp.br) and'
-    write (6,'(a)') '                 Pedro Brandimarte '            // &
-         '(brandimarte@gmail.com).'
+    write (6,'(/,a)') '      By Pedro Brandimarte '   // &
+         '(brandimarte@gmail.com) and'
+    write (6,'(a)') '         Eric de Castro e Andrade '            // &
+         '(eandrade@ift.unesp.br).'
     write (6,'(/,a)') '      Copyright (c), All Rights Reserved'
     write (6,'(/,a)') '      This program is free software. '        // &
          'You can redistribute it and/or'

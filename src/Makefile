@@ -1,8 +1,8 @@
 #  *******************************************************************  #
 #  KPM Fortran Code 2014                                                #
 #                                                                       #
-#  Written by Eric de Castro e Andrade (eandrade@ift.unesp.br) and      #
-#             Pedro Brandimarte (brandimarte@gmail.com).                #
+#  By Pedro Brandimarte (brandimarte@gmail.com) and                     #
+#     Eric de Castro e Andrade (eandrade@ift.unesp.br)                  #
 #                                                                       #
 #  Copyright (c), All Rights Reserved                                   #
 #                                                                       #
@@ -65,7 +65,7 @@ endif
 .SUFFIXES:
 .SUFFIXES: .f .F .o .a .f90 .F90 .cpp
 
-# Rules to compiel object files.
+# Rules to compile object files.
 .F90.o:
 	$(FC) $(FFLAGS) -c $(INCFLAGS) $(FPPFLAGS) $<
 
@@ -150,7 +150,7 @@ $(EXEC): $(FDF) $(MKLDFT) $(OBJS)
 
 clean:
 	@echo "==> Cleaning KPM object and executable files"
-	$(RM) *~ \#~ .\#* *.o *.log $(EXEC) core a.out
+	$(RM) *~ \#~ .\#* *.o *.mod *.log $(EXEC) core a.out
 
 cleanall: clean
 	@echo "==> Cleaning libraries compilations"

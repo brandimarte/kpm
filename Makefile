@@ -1,8 +1,8 @@
 #  *******************************************************************  #
 #  KPM Fortran Code 2014                                                #
 #                                                                       #
-#  Written by Eric de Castro e Andrade (eandrade@ift.unesp.br) and      #
-#             Pedro Brandimarte (brandimarte@gmail.com).                #
+#  By Pedro Brandimarte (brandimarte@gmail.com) and                     #
+#     Eric de Castro e Andrade (eandrade@ift.unesp.br)                  #
 #                                                                       #
 #  Copyright (c), All Rights Reserved                                   #
 #                                                                       #
@@ -49,10 +49,8 @@ what:
 	@echo "#  ***************************************************  #"
 	@echo "#  KPM Fortran Code 2014                                #"
 	@echo "#                                                       #"
-	@echo "#  Written by:                                          #"
-	@echo "#                                                       #"
-	@echo "#    Eric de Castro e Andrade (eandrade@ift.unesp.br)   #"
 	@echo "#    Pedro Brandimarte (brandimarte@gmail.com)          #"
+	@echo "#    Eric de Castro e Andrade (eandrade@ift.unesp.br)   #"
 	@echo "#                                                       #"
 	@echo "#  Copyright (c), All Rights Reserved                   #"
 	@echo "#                                                       #"

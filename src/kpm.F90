@@ -1,8 +1,8 @@
 !  *******************************************************************  !
 !  KPM Fortran Code 2014                                                !
 !                                                                       !
-!  Written by Eric de Castro e Andrade (eandrade@ift.unesp.br) and      !
-!             Pedro Brandimarte (brandimarte@gmail.com).                !
+!  By Pedro Brandimarte (brandimarte@gmail.com) and                     !
+!     Eric de Castro e Andrade (eandrade@ift.unesp.br)                  !
 !                                                                       !
 !  Copyright (c), All Rights Reserved                                   !
 !                                                                       !
@@ -21,8 +21,8 @@
 !                              PROGRAM KPM                              !
 !  *******************************************************************  !
 !  Description: Kernel Polynomial Method implementation using           !
-!  Chebyshev expansion for computing properties of a disordered first   !
-!  neighbors tight-binding square latice.                               !
+!  Chebyshev expansion for computing properties of a disordered         !
+!  tight-binding lattices (square or quasicrystals).                    !
 !                                                                       !
 !  Written by Pedro Brandimarte, Dec 2014.                              !
 !  Instituto de Fisica                                                  !
